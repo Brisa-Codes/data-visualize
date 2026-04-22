@@ -359,12 +359,22 @@ with st.expander("📂 Step 2: Data Source", expanded=True):
         topic = st.text_input("Indicator Code", value="NY.GDP.MKTP.CD")
         years = st.slider("Year Range", 1960, 2023, (2000, 2023))
     else:
-        st.info("Download directly from Kaggle. The engine will auto-detect the right files and columns.")
-        k_col1, k_col2 = st.columns(2)
-        with k_col1:
-            kaggle_token = st.text_input("Kaggle Token (starts with KGAT_)", type="password")
-        with k_col2:
-            kaggle_dataset = st.text_input("Dataset Ref (e.g., joshuajhchoi/world-population-19602020)")
+        st.info("Search Kaggle for datasets. No API keys required.")
+        search_query = st.text_input("Search Kaggle (e.g. population, gdp, climate)")
+        
+        if 'kaggle_results' not in st.session_state:
+            st.session_state.kaggle_results = []
+            
+        if st.button("Search Kaggle", key="search_btn"):
+            if search_query:
+                with st.spinner("Searching..."):
+                    st.session_state.kaggle_results = DataFetcher.search_kaggle(search_query)
+        
+        kaggle_dataset = ""
+        if st.session_state.kaggle_results:
+            options = {f"{r['title']} ({r['ref']})": r['ref'] for r in st.session_state.kaggle_results}
+            selected_option = st.selectbox("Select a Dataset", list(options.keys()))
+            kaggle_dataset = options[selected_option]
 
 with st.expander("🎨 Step 3: Aesthetics"):
     default_title = catalog_dataset if catalog_dataset else "My Visualization"
@@ -398,14 +408,11 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
             elif data_source == "World Bank API":
                 df = DataFetcher.from_world_bank(topic, years[0], years[1])
             else:
-                if not kaggle_token:
-                    raise ValueError("Please provide your Kaggle Token.")
                 if not kaggle_dataset:
-                    raise ValueError("Dataset Ref is required.")
+                    raise ValueError("Please search and select a Kaggle dataset.")
                 
                 progress.progress(5, text="Fetching data from Kaggle...")
                 df = DataFetcher.from_kaggle(
-                    token=kaggle_token,
                     dataset_ref=kaggle_dataset
                 )
             progress.progress(10, text="Interpolating frames...")
@@ -428,7 +435,8 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
                 base = 15 + (offset * 40)
                 pct = base + int((cur / tot) * 40)
                 pct = min(pct, 95)
-                progress.progress(pct, text=f"Rendering {fmt_name}... {int(cur/tot*100)}%")
+                text_pct = min(100, int(cur/tot*100))
+                progress.progress(pct, text=f"Rendering {fmt_name}... {text_pct}%")
 
             base_name = f"viz_{int(time.time())}"
             if fmt == 'both':
@@ -442,7 +450,8 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
                 def single_progress(cur, tot):
                     pct = 15 + int((cur / tot) * 80)
                     pct = min(pct, 95)
-                    progress.progress(pct, text=f"Rendering {fmt}... {int(cur/tot*100)}%")
+                    text_pct = min(100, int(cur/tot*100))
+                    progress.progress(pct, text=f"Rendering {fmt}... {text_pct}%")
 
                 ChartClass = LineRaceChart if chart_type == "line" else BarChartRace
                 chart = ChartClass(df_interpolated, top_n=10, theme=theme, fmt=fmt, title=title)

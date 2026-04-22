@@ -280,89 +280,93 @@ class DataFetcher:
         )
 
     @staticmethod
-    def from_kaggle(token: str, dataset_ref: str, filename: str = "",
+    def search_kaggle(query: str, token: str = "KGAT_48341c2a075b3d792914f46a3d194a2b") -> list:
+        """Search Kaggle datasets using the REST API."""
+        import requests
+        headers = {'Authorization': f'Bearer {token}'}
+        try:
+            resp = requests.get(f'https://www.kaggle.com/api/v1/datasets/list?search={query}', headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            return [{'ref': d['ref'], 'title': d.get('title', d['ref'])} for d in data]
+        except Exception as e:
+            raise RuntimeError(f"Kaggle search failed: {e}")
+
+    @staticmethod
+    def from_kaggle(dataset_ref: str, token: str = "KGAT_48341c2a075b3d792914f46a3d194a2b", filename: str = "",
                     index_col: str = "", entity_col: str = "", value_col: str = "") -> pd.DataFrame:
-        """Fetch and optionally pivot a dataset from Kaggle with auto-detection."""
+        """Fetch and optionally pivot a dataset from Kaggle using kagglehub with auto-detection."""
         import os
-        import tempfile
-        import zipfile
+        import kagglehub
 
         os.environ['KAGGLE_API_TOKEN'] = token
 
         try:
-            from kaggle.api.kaggle_api_extended import KaggleApi
-            api = KaggleApi()
-            api.authenticate()
+            tmpdir = kagglehub.dataset_download(dataset_ref)
         except Exception as e:
-            raise RuntimeError(f"Kaggle authentication failed: {e}")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                api.dataset_download_files(dataset_ref, path=tmpdir, unzip=True)
-            except Exception as e:
-                raise RuntimeError(f"Failed to download dataset {dataset_ref}: {e}")
+            raise RuntimeError(f"Failed to download dataset {dataset_ref}: {e}")
             
-            if filename:
-                file_path = os.path.join(tmpdir, filename)
-                if not os.path.exists(file_path):
-                    for root, dirs, files in os.walk(tmpdir):
-                        if filename in files:
-                            file_path = os.path.join(root, filename)
-                            break
-            else:
-                csv_files = []
-                for root, dirs, files in os.walk(tmpdir):
-                    for f in files:
-                        if f.endswith('.csv'):
-                            csv_files.append(os.path.join(root, f))
-                if not csv_files:
-                    raise FileNotFoundError("No CSV files found in the dataset.")
-                csv_files.sort(key=os.path.getsize, reverse=True)
-                file_path = csv_files[0]
-
+        if filename:
+            file_path = os.path.join(tmpdir, filename)
             if not os.path.exists(file_path):
-                raise FileNotFoundError(f"File not found in the downloaded dataset.")
-
-            df = pd.read_csv(file_path)
-
-            if not index_col:
-                for col in df.columns:
-                    if str(col).lower() in ['year', 'date', 'time', 'period']:
-                        index_col = col
+                for root, dirs, files in os.walk(tmpdir):
+                    if filename in files:
+                        file_path = os.path.join(root, filename)
                         break
-                if not index_col:
-                    index_col = df.columns[0]
+        else:
+            csv_files = []
+            for root, dirs, files in os.walk(tmpdir):
+                for f in files:
+                    if f.endswith('.csv'):
+                        csv_files.append(os.path.join(root, f))
+            if not csv_files:
+                raise FileNotFoundError("No CSV files found in the downloaded Kaggle dataset.")
+            csv_files.sort(key=os.path.getsize, reverse=True)
+            file_path = csv_files[0]
 
-            if index_col not in df.columns:
-                raise ValueError(f"Index column '{index_col}' not found in dataset.")
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found in the downloaded dataset.")
 
-            if not entity_col and not value_col:
-                str_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
-                num_cols = df.select_dtypes(include=['number']).columns.tolist()
+        df = pd.read_csv(file_path)
+
+        if not index_col:
+            for col in df.columns:
+                if str(col).lower() in ['year', 'date', 'time', 'period']:
+                    index_col = col
+                    break
+            if not index_col:
+                index_col = df.columns[0]
+
+        if index_col not in df.columns:
+            raise ValueError(f"Index column '{index_col}' not found in dataset.")
+
+        if not entity_col and not value_col:
+            str_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
+            num_cols = df.select_dtypes(include=['number']).columns.tolist()
+            
+            if index_col in str_cols: str_cols.remove(index_col)
+            if index_col in num_cols: num_cols.remove(index_col)
+
+            if len(str_cols) >= 1 and len(num_cols) >= 1:
+                entity_col = str_cols[0]
+                for col in str_cols:
+                    if any(x in str(col).lower() for x in ['country', 'name', 'entity', 'state', 'category']):
+                        entity_col = col
+                        break
                 
-                if index_col in str_cols: str_cols.remove(index_col)
-                if index_col in num_cols: num_cols.remove(index_col)
+                value_col = num_cols[0]
+                for col in num_cols:
+                    if any(x in str(col).lower() for x in ['value', 'amount', 'total', 'population', 'gdp', 'count']):
+                        value_col = col
+                        break
 
-                if len(str_cols) >= 1 and len(num_cols) >= 1:
-                    entity_col = str_cols[0]
-                    for col in str_cols:
-                        if any(x in str(col).lower() for x in ['country', 'name', 'entity', 'state']):
-                            entity_col = col
-                            break
-                    
-                    value_col = num_cols[0]
-                    for col in num_cols:
-                        if any(x in str(col).lower() for x in ['value', 'amount', 'total', 'population', 'gdp']):
-                            value_col = col
-                            break
+        if entity_col and value_col:
+            if entity_col in df.columns and value_col in df.columns:
+                df = df.pivot_table(index=index_col, columns=entity_col, values=value_col, aggfunc='first')
+        else:
+            df = df.set_index(index_col)
 
-            if entity_col and value_col:
-                if entity_col in df.columns and value_col in df.columns:
-                    df = df.pivot_table(index=index_col, columns=entity_col, values=value_col, aggfunc='first')
-            else:
-                df = df.set_index(index_col)
-
-            df.index = pd.to_numeric(df.index, errors='coerce')
-            df = df.dropna(subset=[df.index.name] if df.index.name else None)
-            df = df.sort_index()
-            return df
+        df.index = pd.to_numeric(df.index, errors='coerce')
+        df = df.dropna(subset=[df.index.name] if df.index.name else None)
+        df = df.sort_index()
+        return df
