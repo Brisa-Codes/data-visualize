@@ -280,16 +280,15 @@ class DataFetcher:
         )
 
     @staticmethod
-    def from_kaggle(username: str, key: str, dataset_ref: str, filename: str,
+    def from_kaggle(token: str, dataset_ref: str, filename: str,
                     index_col: str, entity_col: str = "", value_col: str = "") -> pd.DataFrame:
         """Fetch and optionally pivot a dataset from Kaggle."""
         import os
         import tempfile
         import zipfile
 
-        # Set Kaggle credentials as environment variables for the Kaggle API
-        os.environ['KAGGLE_USERNAME'] = username
-        os.environ['KAGGLE_KEY'] = key
+        # Set Kaggle API Token as environment variable
+        os.environ['KAGGLE_API_TOKEN'] = token
 
         try:
             from kaggle.api.kaggle_api_extended import KaggleApi

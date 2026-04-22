@@ -362,11 +362,10 @@ with st.expander("📂 Step 2: Data Source", expanded=True):
         st.info("Download directly from Kaggle. Note: You need a Kaggle API token.")
         k_col1, k_col2 = st.columns(2)
         with k_col1:
-            kaggle_username = st.text_input("Kaggle Username")
+            kaggle_token = st.text_input("Kaggle Token (starts with KGAT_)", type="password")
             kaggle_dataset = st.text_input("Dataset Ref (e.g., joshuajhchoi/world-population-19602020)")
             kaggle_index = st.text_input("Time/Year Column (e.g. Year)")
         with k_col2:
-            kaggle_key = st.text_input("Kaggle Key", type="password")
             kaggle_file = st.text_input("Filename (e.g., population.csv)")
             kaggle_entity = st.text_input("Entity/Category Column (Leave blank if already pivoted)")
             kaggle_value = st.text_input("Value Column (Leave blank if already pivoted)")
@@ -403,15 +402,14 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
             elif data_source == "World Bank API":
                 df = DataFetcher.from_world_bank(topic, years[0], years[1])
             else:
-                if not kaggle_username or not kaggle_key:
-                    raise ValueError("Please provide your Kaggle Username and Key.")
+                if not kaggle_token:
+                    raise ValueError("Please provide your Kaggle Token.")
                 if not kaggle_dataset or not kaggle_index or not kaggle_file:
                     raise ValueError("Dataset Ref, Filename, and Time/Year Column are required.")
                 
                 progress.progress(5, text="Fetching data from Kaggle...")
                 df = DataFetcher.from_kaggle(
-                    username=kaggle_username,
-                    key=kaggle_key,
+                    token=kaggle_token,
                     dataset_ref=kaggle_dataset,
                     filename=kaggle_file,
                     index_col=kaggle_index,
