@@ -18,7 +18,7 @@ class LineRaceChart:
 
     def __init__(self, df: pd.DataFrame, top_n: int = 10, theme: str = 'dark',
                  fmt: str = 'landscape', title: str = "",
-                 smoothing: float = 0.025):
+                 smoothing: float = 0.015):
         self.df = df
         self.top_n = top_n
         self.theme = theme
@@ -125,9 +125,11 @@ class LineRaceChart:
         chart_bottom = int(H * (1 - zones['chart_bottom'])) - 30
         chart_w, chart_h = chart_right - chart_left, chart_bottom - chart_top
 
-        # Add hold frames
+        # Add 150 hold frames at the end (5 seconds at 30fps)
         indices = list(self.df.index)
-        indices += [indices[-1]] * 60
+        last_idx = indices[-1]
+        num_hold_frames = 150
+        indices += [last_idx] * num_hold_frames
         total_frames = len(indices)
 
         bg_color, text_color, text_dim = palette['bg'], palette['text'], palette['text_dim']
@@ -165,6 +167,13 @@ class LineRaceChart:
                 min_val = 0
                 
                 target_ranks = {ent: i for i, ent in enumerate(top_entities.index)}
+
+                # Progressively increase smoothing during the hold frames to snap into place
+                current_smoothing = self.smoothing
+                if frame_num >= total_frames - num_hold_frames:
+                    hold_progress = (frame_num - (total_frames - num_hold_frames)) / num_hold_frames
+                    current_smoothing = min(1.0, self.smoothing + hold_progress * 0.2)
+
                 for entity in top_entities.index:
                     # Value smoothing
                     target_val = top_entities[entity]
@@ -172,14 +181,14 @@ class LineRaceChart:
                         # Start from 0 for a grow-in effect if it's the first time seeing this entity
                         smooth_vals[entity] = 0.0 
                     
-                    smooth_vals[entity] += self.smoothing * (target_val - smooth_vals[entity])
+                    smooth_vals[entity] += current_smoothing * (target_val - smooth_vals[entity])
                     
                     # Rank smoothing (X-axis) — extra soft for "soft take overs"
                     target_rank = target_ranks[entity]
                     if entity not in smooth_ranks:
                         smooth_ranks[entity] = float(target_rank)
                     else:
-                        smooth_ranks[entity] += 0.015 * (target_rank - smooth_ranks[entity])
+                        smooth_ranks[entity] += current_smoothing * (target_rank - smooth_ranks[entity])
     
                 # Grid
                 for i in range(6):

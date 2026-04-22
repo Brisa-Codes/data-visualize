@@ -17,7 +17,7 @@ class BarChartRace:
 
     def __init__(self, df: pd.DataFrame, top_n: int = 10, theme: str = 'dark',
                  fmt: str = 'landscape', title: str = "",
-                 smoothing: float = 0.025):
+                 smoothing: float = 0.015):
         self.df = df
         self.top_n = top_n
         self.theme = theme
@@ -97,10 +97,11 @@ class BarChartRace:
         bar_radius = max(bar_h // 4, 4)
 
         smooth_y = {}
-        # Add 60 hold frames at the end (2 seconds at 30fps)
+        # Add 150 hold frames at the end (5 seconds at 30fps)
         indices = list(self.df.index)
         last_idx = indices[-1]
-        indices += [last_idx] * 60
+        num_hold_frames = 150
+        indices += [last_idx] * num_hold_frames
         total_frames = len(indices)
 
         bg_color = palette['bg']
@@ -144,12 +145,18 @@ class BarChartRace:
                 target_y_map = {}
                 for rank, entity in enumerate(top_entities.index):
                     target_y_map[entity] = rank  # 0 = top, n-1 = bottom
+
+                # Progressively increase smoothing during the hold frames to snap into place
+                current_smoothing = self.smoothing
+                if frame_num >= total_frames - num_hold_frames:
+                    hold_progress = (frame_num - (total_frames - num_hold_frames)) / num_hold_frames
+                    current_smoothing = min(1.0, self.smoothing + hold_progress * 0.2)
     
                 for entity in top_entities.index:
                     if entity not in smooth_y:
                         smooth_y[entity] = float(target_y_map[entity])
                     else:
-                        smooth_y[entity] += self.smoothing * (target_y_map[entity] - smooth_y[entity])
+                        smooth_y[entity] += current_smoothing * (target_y_map[entity] - smooth_y[entity])
     
                 # ── Draw grid lines ──────────────────────────────────
                 for i in range(5):
