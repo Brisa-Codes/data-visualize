@@ -32,7 +32,7 @@ class BarChartRace:
             self.font_label = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
             self.font_value = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
             self.font_year  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 72)
-            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 32)
+            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 44)
         except (OSError, IOError):
             try:
                 self.font_label = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)

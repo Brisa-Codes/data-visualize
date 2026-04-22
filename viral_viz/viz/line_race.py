@@ -33,7 +33,7 @@ class LineRaceChart:
             self.font_label = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
             self.font_value = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
             self.font_year  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 72)
-            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 32)
+            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 44)
             self.font_axis  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 12)
             self.font_rank  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 11)
         except (OSError, IOError):
