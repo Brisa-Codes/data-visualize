@@ -7,3 +7,5 @@ moviepy>=2.2.1
 imageio>=2.34.0
 imageio-ffmpeg>=0.4.9
 click>=8.1.7
+pilmoji==2.0.5
+emoji==2.15.0

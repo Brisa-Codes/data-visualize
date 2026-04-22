@@ -6,6 +6,7 @@ from typing import Generator
 from .themes import Themes
 from .layout import LayoutManager
 from .emojis import ENTITY_EMOJIS
+from pilmoji import Pilmoji
 
 
 class BarChartRace:
@@ -45,12 +46,6 @@ class BarChartRace:
                 self.font_value = ImageFont.load_default()
                 self.font_year  = ImageFont.load_default()
                 self.font_title = ImageFont.load_default()
-
-        # Emoji font
-        try:
-            self.font_emoji = ImageFont.truetype("/System/Library/Fonts/Apple Color Emoji.ttc", 20)
-        except OSError:
-            self.font_emoji = None
 
     def _draw_title(self, draw, W, H, zones, text_color):
         if not self.title: return
@@ -154,54 +149,42 @@ class BarChartRace:
                 draw.line([(gx, chart_top), (gx, chart_bottom)], fill=grid_color, width=1)
 
             # ── Draw bars ────────────────────────────────────────
-            for entity in top_entities.index:
-                val = top_entities[entity]
-                rank_y = smooth_y[entity]
+            with Pilmoji(img) as pilmoji:
+                for entity in top_entities.index:
+                    val = top_entities[entity]
+                    rank_y = smooth_y[entity]
 
-                bar_pixel_y = chart_top + int(rank_y * bar_gap) + (bar_gap - bar_h) // 2
-                bar_pixel_w = int((val / max_val) * chart_w * 0.85)
+                    bar_pixel_y = chart_top + int(rank_y * bar_gap) + (bar_gap - bar_h) // 2
+                    bar_pixel_w = int((val / max_val) * chart_w * 0.85)
 
-                x0 = chart_left
-                y0 = bar_pixel_y
-                x1 = chart_left + bar_pixel_w
-                y1 = bar_pixel_y + bar_h
+                    x0 = chart_left
+                    y0 = bar_pixel_y
+                    x1 = chart_left + bar_pixel_w
+                    y1 = bar_pixel_y + bar_h
 
-                color = self.colors.get(entity, '#888888')
-                draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_radius, fill=color)
+                    color = self.colors.get(entity, '#888888')
+                    draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_radius, fill=color)
 
-                # Entity label — inside bar if it fits, else outside
-                val_text = f'{val:,.0f}'
-                ly = y0 + (bar_h - 18) // 2
-                vy = y0 + (bar_h - 16) // 2
+                    # Entity label — inside bar if it fits, else outside
+                    val_text = f'{val:,.0f}'
+                    ly = y0 + (bar_h - 18) // 2
+                    vy = y0 + (bar_h - 16) // 2
 
-                emoji = ENTITY_EMOJIS.get(entity)
-                emoji_w = 26 if (emoji and self.font_emoji) else 0
+                    emoji = ENTITY_EMOJIS.get(entity)
+                    display_text = f"{emoji} {entity}" if emoji else entity
 
-                label_bbox = draw.textbbox((0, 0), entity, font=self.font_label)
-                label_w = label_bbox[2] - label_bbox[0] + emoji_w
+                    # Pilmoji textbbox handles the emoji size perfectly
+                    label_bbox = pilmoji.getsize(display_text, font=self.font_label)
+                    label_w = label_bbox[0]
 
-                if label_w + 16 < bar_pixel_w:
-                    # Label fits inside the bar
-                    text_x = x0 + 8
-                    if emoji and self.font_emoji:
-                        try:
-                            draw.text((text_x, ly), emoji, font=self.font_emoji, embedded_color=True)
-                        except:
-                            draw.text((text_x, ly), emoji, font=self.font_emoji)
-                        text_x += emoji_w
-                    draw.text((text_x, ly), entity, fill='white', font=self.font_label)
-                    draw.text((x1 + 6, vy), val_text, fill=text_color, font=self.font_value)
-                else:
-                    # Label outside bar, then value after it
-                    text_x = x1 + 6
-                    if emoji and self.font_emoji:
-                        try:
-                            draw.text((text_x, ly), emoji, font=self.font_emoji, embedded_color=True)
-                        except:
-                            draw.text((text_x, ly), emoji, font=self.font_emoji)
-                        text_x += emoji_w
-                    draw.text((text_x, ly), entity, fill=text_color, font=self.font_label)
-                    draw.text((x1 + 6 + label_w + 6, vy), val_text, fill=text_dim, font=self.font_value)
+                    if label_w + 16 < bar_pixel_w:
+                        # Label fits inside the bar
+                        pilmoji.text((x0 + 8, ly), display_text, fill='white', font=self.font_label)
+                        draw.text((x1 + 6, vy), val_text, fill=text_color, font=self.font_value)
+                    else:
+                        # Label outside bar, then value after it
+                        pilmoji.text((x1 + 6, ly), display_text, fill=text_color, font=self.font_label)
+                        draw.text((x1 + 6 + label_w + 6, vy), val_text, fill=text_dim, font=self.font_value)
 
             # ── Year watermark (centered) ─────────────────────────
             current_year = str(int(float(time_idx)))

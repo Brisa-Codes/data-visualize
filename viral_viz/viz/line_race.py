@@ -6,6 +6,7 @@ from typing import Generator
 from .themes import Themes
 from .layout import LayoutManager
 from .emojis import ENTITY_EMOJIS
+from pilmoji import Pilmoji
 
 
 class LineRaceChart:
@@ -52,12 +53,6 @@ class LineRaceChart:
                 self.font_title = ImageFont.load_default()
                 self.font_axis  = ImageFont.load_default()
                 self.font_rank  = ImageFont.load_default()
-
-        # Emoji font
-        try:
-            self.font_emoji = ImageFont.truetype("/System/Library/Fonts/Apple Color Emoji.ttc", 20)
-        except OSError:
-            self.font_emoji = None
 
     @staticmethod
     def _catmull_rom(p0, p1, p2, p3, num_points=20):
@@ -205,28 +200,23 @@ class LineRaceChart:
                     draw.line([curve[i], curve[i+1]], fill=line_color, width=2)
 
             # Labels
-            for x, y, ent, val in dot_positions:
-                draw.ellipse([x-4, y-4, x+4, y+4], fill=line_color)
-                vtxt = self._format_value(val)
-                lb, vb = draw.textbbox((0, 0), ent, font=self.font_label), draw.textbbox((0, 0), vtxt, font=self.font_value)
-                
-                emoji = ENTITY_EMOJIS.get(ent)
-                emoji_w = 26 if (emoji and self.font_emoji) else 0
-
-                bw, bh = max(lb[2]-lb[0] + emoji_w, vb[2]-vb[0]) + 24, 48
-                bx0, by0 = max(chart_left, min(x - bw//2, chart_right - bw)), y - 60
-                draw.rounded_rectangle([bx0, by0, bx0+bw, by0+bh], radius=8, fill=(10, 10, 15), outline=(60, 60, 70), width=1)
-                
-                text_x = bx0 + 12
-                if emoji and self.font_emoji:
-                    try:
-                        draw.text((text_x, by0 + 4), emoji, font=self.font_emoji, embedded_color=True)
-                    except:
-                        draw.text((text_x, by0 + 4), emoji, font=self.font_emoji)
-                    text_x += emoji_w
-
-                draw.text((text_x, by0+4), ent, fill='white', font=self.font_label)
-                draw.text((bx0+12, by0+26), vtxt, fill='#AAA', font=self.font_value)
+            with Pilmoji(img) as pilmoji:
+                for x, y, ent, val in dot_positions:
+                    draw.ellipse([x-4, y-4, x+4, y+4], fill=line_color)
+                    vtxt = self._format_value(val)
+                    
+                    emoji = ENTITY_EMOJIS.get(ent)
+                    display_text = f"{emoji} {ent}" if emoji else ent
+                    
+                    lb = pilmoji.getsize(display_text, font=self.font_label)
+                    vb = draw.textbbox((0, 0), vtxt, font=self.font_value)
+                    
+                    bw, bh = max(lb[0], vb[2]-vb[0]) + 24, 48
+                    bx0, by0 = max(chart_left, min(x - bw//2, chart_right - bw)), y - 60
+                    draw.rounded_rectangle([bx0, by0, bx0+bw, by0+bh], radius=8, fill=(10, 10, 15), outline=(60, 60, 70), width=1)
+                    
+                    pilmoji.text((bx0 + 12, by0 + 4), display_text, fill='white', font=self.font_label)
+                    draw.text((bx0+12, by0+26), vtxt, fill='#AAA', font=self.font_value)
 
             # Ranks
             for r in range(self.top_n):
