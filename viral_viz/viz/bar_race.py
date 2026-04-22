@@ -48,7 +48,7 @@ class BarChartRace:
 
         # Emoji font
         try:
-            self.font_emoji = ImageFont.truetype("/System/Library/Fonts/Apple Color Emoji.ttc", 18)
+            self.font_emoji = ImageFont.truetype("/System/Library/Fonts/Apple Color Emoji.ttc", 20)
         except OSError:
             self.font_emoji = None
 
