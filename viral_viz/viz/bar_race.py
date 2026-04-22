@@ -132,97 +132,97 @@ class BarChartRace:
                 pilmoji = shared_pilmoji
 
                 row = self.df.loc[time_idx].dropna()
-            sorted_entities = row.sort_values(ascending=False)
-            top_entities = sorted_entities.head(self.top_n)
-
-            n = len(top_entities)
-            max_val = top_entities.max()
-            if max_val <= 0:
-                max_val = 1
-
-            # ── Compute smooth y-positions ───────────────────────
-            target_y_map = {}
-            for rank, entity in enumerate(top_entities.index):
-                target_y_map[entity] = rank  # 0 = top, n-1 = bottom
-
-            for entity in top_entities.index:
-                if entity not in smooth_y:
-                    smooth_y[entity] = float(target_y_map[entity])
-                else:
-                    smooth_y[entity] += self.smoothing * (target_y_map[entity] - smooth_y[entity])
-
-            # ── Draw grid lines ──────────────────────────────────
-            for i in range(5):
-                gx = chart_left + int(chart_w * i / 4)
-                draw.line([(gx, chart_top), (gx, chart_bottom)], fill=grid_color, width=1)
-
-            # ── Draw bars ────────────────────────────────────────
-            for entity in top_entities.index:
-                val = top_entities[entity]
-                rank_y = smooth_y[entity]
-
-                bar_pixel_y = chart_top + int(rank_y * bar_gap) + (bar_gap - bar_h) // 2
-                bar_pixel_w = int((val / max_val) * chart_w * 0.85)
-
-                x0 = chart_left
-                y0 = bar_pixel_y
-                x1 = chart_left + bar_pixel_w
-                y1 = bar_pixel_y + bar_h
-
-                color = self.colors.get(entity, '#888888')
-                draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_radius, fill=color)
-
-                # Entity label — inside bar if it fits, else outside
-                val_text = f'{val:,.0f}'
-                ly = y0 + (bar_h - 18) // 2
-                vy = y0 + (bar_h - 16) // 2
-
-                emoji = ENTITY_EMOJIS.get(entity)
-                display_text = f"{emoji} {entity}" if emoji else entity
-
-                # Pilmoji textbbox handles the emoji size perfectly
-                label_bbox = pilmoji.getsize(display_text, font=self.font_label)
-                label_w = label_bbox[0]
-
-                if label_w + 16 < bar_pixel_w:
-                    # Label fits inside the bar
-                    pilmoji.text((x0 + 8, ly), display_text, fill='white', font=self.font_label)
-                    draw.text((x1 + 6, vy), val_text, fill=text_color, font=self.font_value)
-                else:
-                    # Label outside bar, then value after it
-                    pilmoji.text((x1 + 6, ly), display_text, fill=text_color, font=self.font_label)
-                    draw.text((x1 + 6 + label_w + 6, vy), val_text, fill=text_dim, font=self.font_value)
-
-            # ── Year watermark (centered) ─────────────────────────
-            current_year = str(int(float(time_idx)))
-            year_bbox = draw.textbbox((0, 0), current_year, font=self.font_year)
-            yw = year_bbox[2] - year_bbox[0]
-            yh = year_bbox[3] - year_bbox[1]
-            year_x = (chart_left + chart_right - yw) // 2
-            year_y = (chart_top + chart_bottom - yh) // 2
-            draw.text((year_x, year_y), current_year,
-                      fill=year_color, font=self.font_year)
-
-            # ── Title ────────────────────────────────────────────
-            self._draw_title(draw, W, H, zones, text_color)
-
-            # ── Progress bar ─────────────────────────────────────
-            progress_frac = frame_num / max(total_frames - 1, 1)
-            prog_y = H - 16
-            prog_h = 4
-            draw.rounded_rectangle(
-                [chart_left, prog_y, chart_right, prog_y + prog_h],
-                radius=2, fill=grid_color
-            )
-            if progress_frac > 0.01:
-                fill_w = chart_left + int((chart_right - chart_left) * progress_frac)
+                sorted_entities = row.sort_values(ascending=False)
+                top_entities = sorted_entities.head(self.top_n)
+    
+                n = len(top_entities)
+                max_val = top_entities.max()
+                if max_val <= 0:
+                    max_val = 1
+    
+                # ── Compute smooth y-positions ───────────────────────
+                target_y_map = {}
+                for rank, entity in enumerate(top_entities.index):
+                    target_y_map[entity] = rank  # 0 = top, n-1 = bottom
+    
+                for entity in top_entities.index:
+                    if entity not in smooth_y:
+                        smooth_y[entity] = float(target_y_map[entity])
+                    else:
+                        smooth_y[entity] += self.smoothing * (target_y_map[entity] - smooth_y[entity])
+    
+                # ── Draw grid lines ──────────────────────────────────
+                for i in range(5):
+                    gx = chart_left + int(chart_w * i / 4)
+                    draw.line([(gx, chart_top), (gx, chart_bottom)], fill=grid_color, width=1)
+    
+                # ── Draw bars ────────────────────────────────────────
+                for entity in top_entities.index:
+                    val = top_entities[entity]
+                    rank_y = smooth_y[entity]
+    
+                    bar_pixel_y = chart_top + int(rank_y * bar_gap) + (bar_gap - bar_h) // 2
+                    bar_pixel_w = int((val / max_val) * chart_w * 0.85)
+    
+                    x0 = chart_left
+                    y0 = bar_pixel_y
+                    x1 = chart_left + bar_pixel_w
+                    y1 = bar_pixel_y + bar_h
+    
+                    color = self.colors.get(entity, '#888888')
+                    draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_radius, fill=color)
+    
+                    # Entity label — inside bar if it fits, else outside
+                    val_text = f'{val:,.0f}'
+                    ly = y0 + (bar_h - 18) // 2
+                    vy = y0 + (bar_h - 16) // 2
+    
+                    emoji = ENTITY_EMOJIS.get(entity)
+                    display_text = f"{emoji} {entity}" if emoji else entity
+    
+                    # Pilmoji textbbox handles the emoji size perfectly
+                    label_bbox = pilmoji.getsize(display_text, font=self.font_label)
+                    label_w = label_bbox[0]
+    
+                    if label_w + 16 < bar_pixel_w:
+                        # Label fits inside the bar
+                        pilmoji.text((x0 + 8, ly), display_text, fill='white', font=self.font_label)
+                        draw.text((x1 + 6, vy), val_text, fill=text_color, font=self.font_value)
+                    else:
+                        # Label outside bar, then value after it
+                        pilmoji.text((x1 + 6, ly), display_text, fill=text_color, font=self.font_label)
+                        draw.text((x1 + 6 + label_w + 6, vy), val_text, fill=text_dim, font=self.font_value)
+    
+                # ── Year watermark (centered) ─────────────────────────
+                current_year = str(int(float(time_idx)))
+                year_bbox = draw.textbbox((0, 0), current_year, font=self.font_year)
+                yw = year_bbox[2] - year_bbox[0]
+                yh = year_bbox[3] - year_bbox[1]
+                year_x = (chart_left + chart_right - yw) // 2
+                year_y = (chart_top + chart_bottom - yh) // 2
+                draw.text((year_x, year_y), current_year,
+                          fill=year_color, font=self.font_year)
+    
+                # ── Title ────────────────────────────────────────────
+                self._draw_title(draw, W, H, zones, text_color)
+    
+                # ── Progress bar ─────────────────────────────────────
+                progress_frac = frame_num / max(total_frames - 1, 1)
+                prog_y = H - 16
+                prog_h = 4
                 draw.rounded_rectangle(
-                    [chart_left, prog_y, fill_w, prog_y + prog_h],
-                    radius=2, fill=accent_color
+                    [chart_left, prog_y, chart_right, prog_y + prog_h],
+                    radius=2, fill=grid_color
                 )
-
-            # ── Yield as numpy array ─────────────────────────────
-            yield np.asarray(img)
-
+                if progress_frac > 0.01:
+                    fill_w = chart_left + int((chart_right - chart_left) * progress_frac)
+                    draw.rounded_rectangle(
+                        [chart_left, prog_y, fill_w, prog_y + prog_h],
+                        radius=2, fill=accent_color
+                    )
+    
+                # ── Yield as numpy array ─────────────────────────────
+                yield np.asarray(img)
+    
         finally:
             shared_pilmoji.close()
