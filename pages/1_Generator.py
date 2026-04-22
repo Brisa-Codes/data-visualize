@@ -359,16 +359,12 @@ with st.expander("📂 Step 2: Data Source", expanded=True):
         topic = st.text_input("Indicator Code", value="NY.GDP.MKTP.CD")
         years = st.slider("Year Range", 1960, 2023, (2000, 2023))
     else:
-        st.info("Download directly from Kaggle. Note: You need a Kaggle API token.")
+        st.info("Download directly from Kaggle. The engine will auto-detect the right files and columns.")
         k_col1, k_col2 = st.columns(2)
         with k_col1:
             kaggle_token = st.text_input("Kaggle Token (starts with KGAT_)", type="password")
-            kaggle_dataset = st.text_input("Dataset Ref (e.g., joshuajhchoi/world-population-19602020)")
-            kaggle_index = st.text_input("Time/Year Column (e.g. Year)")
         with k_col2:
-            kaggle_file = st.text_input("Filename (e.g., population.csv)")
-            kaggle_entity = st.text_input("Entity/Category Column (Leave blank if already pivoted)")
-            kaggle_value = st.text_input("Value Column (Leave blank if already pivoted)")
+            kaggle_dataset = st.text_input("Dataset Ref (e.g., joshuajhchoi/world-population-19602020)")
 
 with st.expander("🎨 Step 3: Aesthetics"):
     default_title = catalog_dataset if catalog_dataset else "My Visualization"
@@ -404,17 +400,13 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
             else:
                 if not kaggle_token:
                     raise ValueError("Please provide your Kaggle Token.")
-                if not kaggle_dataset or not kaggle_index or not kaggle_file:
-                    raise ValueError("Dataset Ref, Filename, and Time/Year Column are required.")
+                if not kaggle_dataset:
+                    raise ValueError("Dataset Ref is required.")
                 
                 progress.progress(5, text="Fetching data from Kaggle...")
                 df = DataFetcher.from_kaggle(
                     token=kaggle_token,
-                    dataset_ref=kaggle_dataset,
-                    filename=kaggle_file,
-                    index_col=kaggle_index,
-                    entity_col=kaggle_entity,
-                    value_col=kaggle_value
+                    dataset_ref=kaggle_dataset
                 )
             progress.progress(10, text="Interpolating frames...")
 

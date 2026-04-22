@@ -280,14 +280,13 @@ class DataFetcher:
         )
 
     @staticmethod
-    def from_kaggle(token: str, dataset_ref: str, filename: str,
-                    index_col: str, entity_col: str = "", value_col: str = "") -> pd.DataFrame:
-        """Fetch and optionally pivot a dataset from Kaggle."""
+    def from_kaggle(token: str, dataset_ref: str, filename: str = "",
+                    index_col: str = "", entity_col: str = "", value_col: str = "") -> pd.DataFrame:
+        """Fetch and optionally pivot a dataset from Kaggle with auto-detection."""
         import os
         import tempfile
         import zipfile
 
-        # Set Kaggle API Token as environment variable
         os.environ['KAGGLE_API_TOKEN'] = token
 
         try:
@@ -297,41 +296,73 @@ class DataFetcher:
         except Exception as e:
             raise RuntimeError(f"Kaggle authentication failed: {e}")
 
-        # Download dataset to a temporary directory
         with tempfile.TemporaryDirectory() as tmpdir:
             try:
                 api.dataset_download_files(dataset_ref, path=tmpdir, unzip=True)
             except Exception as e:
                 raise RuntimeError(f"Failed to download dataset {dataset_ref}: {e}")
             
-            file_path = os.path.join(tmpdir, filename)
-            if not os.path.exists(file_path):
-                # Try finding it inside nested directories if unzip=True puts it there
-                for root, dirs, files in os.walk(tmpdir):
-                    if filename in files:
-                        file_path = os.path.join(root, filename)
-                        break
-                
+            if filename:
+                file_path = os.path.join(tmpdir, filename)
                 if not os.path.exists(file_path):
-                    raise FileNotFoundError(f"File '{filename}' not found in the downloaded dataset.")
+                    for root, dirs, files in os.walk(tmpdir):
+                        if filename in files:
+                            file_path = os.path.join(root, filename)
+                            break
+            else:
+                csv_files = []
+                for root, dirs, files in os.walk(tmpdir):
+                    for f in files:
+                        if f.endswith('.csv'):
+                            csv_files.append(os.path.join(root, f))
+                if not csv_files:
+                    raise FileNotFoundError("No CSV files found in the dataset.")
+                csv_files.sort(key=os.path.getsize, reverse=True)
+                file_path = csv_files[0]
+
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found in the downloaded dataset.")
 
             df = pd.read_csv(file_path)
+
+            if not index_col:
+                for col in df.columns:
+                    if str(col).lower() in ['year', 'date', 'time', 'period']:
+                        index_col = col
+                        break
+                if not index_col:
+                    index_col = df.columns[0]
 
             if index_col not in df.columns:
                 raise ValueError(f"Index column '{index_col}' not found in dataset.")
 
-            # If entity and value are provided, pivot the dataframe
-            if entity_col and value_col:
-                if entity_col not in df.columns:
-                    raise ValueError(f"Entity column '{entity_col}' not found in dataset.")
-                if value_col not in df.columns:
-                    raise ValueError(f"Value column '{value_col}' not found in dataset.")
+            if not entity_col and not value_col:
+                str_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
+                num_cols = df.select_dtypes(include=['number']).columns.tolist()
                 
-                df = df.pivot_table(index=index_col, columns=entity_col, values=value_col, aggfunc='first')
+                if index_col in str_cols: str_cols.remove(index_col)
+                if index_col in num_cols: num_cols.remove(index_col)
+
+                if len(str_cols) >= 1 and len(num_cols) >= 1:
+                    entity_col = str_cols[0]
+                    for col in str_cols:
+                        if any(x in str(col).lower() for x in ['country', 'name', 'entity', 'state']):
+                            entity_col = col
+                            break
+                    
+                    value_col = num_cols[0]
+                    for col in num_cols:
+                        if any(x in str(col).lower() for x in ['value', 'amount', 'total', 'population', 'gdp']):
+                            value_col = col
+                            break
+
+            if entity_col and value_col:
+                if entity_col in df.columns and value_col in df.columns:
+                    df = df.pivot_table(index=index_col, columns=entity_col, values=value_col, aggfunc='first')
             else:
-                # Assume it's already pivoted, just set the index
                 df = df.set_index(index_col)
 
-            df.index = pd.to_numeric(df.index, errors='ignore')
+            df.index = pd.to_numeric(df.index, errors='coerce')
+            df = df.dropna(subset=[df.index.name] if df.index.name else None)
             df = df.sort_index()
             return df
