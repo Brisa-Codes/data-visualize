@@ -155,96 +155,96 @@ class LineRaceChart:
                 shared_pilmoji.draw = draw
                 pilmoji = shared_pilmoji
 
-            row = self.df.loc[time_idx].dropna()
-            top_entities = row.sort_values(ascending=False).head(self.top_n).sort_values(ascending=True)
-            if len(top_entities) == 0:
+                row = self.df.loc[time_idx].dropna()
+                top_entities = row.sort_values(ascending=False).head(self.top_n).sort_values(ascending=True)
+                if len(top_entities) == 0:
+                    yield np.asarray(img)
+                    continue
+    
+                max_val = max(top_entities.max(), 1)
+                min_val = 0
+                
+                target_ranks = {ent: i for i, ent in enumerate(top_entities.index)}
+                for entity in top_entities.index:
+                    # Value smoothing
+                    target_val = top_entities[entity]
+                    if entity not in smooth_vals:
+                        # Start from 0 for a grow-in effect if it's the first time seeing this entity
+                        smooth_vals[entity] = 0.0 
+                    
+                    smooth_vals[entity] += self.smoothing * (target_val - smooth_vals[entity])
+                    
+                    # Rank smoothing (X-axis) — extra soft for "soft take overs"
+                    target_rank = target_ranks[entity]
+                    if entity not in smooth_ranks:
+                        smooth_ranks[entity] = float(target_rank)
+                    else:
+                        smooth_ranks[entity] += 0.015 * (target_rank - smooth_ranks[entity])
+    
+                # Grid
+                for i in range(6):
+                    gy = chart_bottom - int(chart_h * i / 5)
+                    draw.line([(chart_left, gy), (chart_right, gy)], fill=grid_color, width=1)
+                    gv = min_val + (max_val - min_val) * i / 5
+                    draw.text((chart_left - 5, gy - 6), self._format_value(gv), fill=text_dim, font=self.font_axis, anchor="ra")
+    
+                # Dots
+                dot_positions = []
+                reveal_x_limit = chart_left + int(reveal_pct * chart_w)
+                for ent in top_entities.index:
+                    x = chart_left + int((smooth_ranks[ent] / max(self.top_n - 1, 1)) * chart_w)
+                    y = chart_bottom - int(((smooth_vals[ent] - min_val) / (max_val - min_val)) * chart_h)
+                    if x <= reveal_x_limit: dot_positions.append((x, y, ent, smooth_vals[ent]))
+                dot_positions.sort(key=lambda d: d[0])
+    
+                # Curve & Fill
+                if len(dot_positions) >= 2:
+                    pts = [(dp[0], dp[1]) for dp in dot_positions]
+                    curve = self._smooth_curve(pts)
+                    fill_layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+                    ImageDraw.Draw(fill_layer).polygon([(chart_left, chart_bottom)] + curve + [(curve[-1][0], chart_bottom)], fill=(0, 230, 118, 30))
+                    img.paste(fill_layer, (0, 0), fill_layer)
+                    for i in range(len(curve)-1):
+                        draw.line([curve[i], curve[i+1]], fill=line_color, width=2)
+    
+                # Labels
+                for x, y, ent, val in dot_positions:
+                    draw.ellipse([x-4, y-4, x+4, y+4], fill=line_color)
+                    vtxt = self._format_value(val)
+                    
+                    emoji = ENTITY_EMOJIS.get(ent)
+                    display_text = f"{emoji} {ent}" if emoji else ent
+                    
+                    lb = pilmoji.getsize(display_text, font=self.font_label)
+                    vb = draw.textbbox((0, 0), vtxt, font=self.font_value)
+                    
+                    bw, bh = max(lb[0], vb[2]-vb[0]) + 24, 48
+                    bx0, by0 = max(chart_left, min(x - bw//2, chart_right - bw)), y - 60
+                    draw.rounded_rectangle([bx0, by0, bx0+bw, by0+bh], radius=8, fill=(10, 10, 15), outline=(60, 60, 70), width=1)
+                    
+                    pilmoji.text((bx0 + 12, by0 + 4), display_text, fill='white', font=self.font_label)
+                    draw.text((bx0+12, by0+26), vtxt, fill='#AAA', font=self.font_value)
+    
+                # Ranks
+                for r in range(self.top_n):
+                    rx = chart_left + int((r / max(self.top_n - 1, 1)) * chart_w)
+                    if rx <= reveal_x_limit:
+                        txt = f"#{r+1}"
+                        bbox = draw.textbbox((0, 0), txt, font=self.font_rank)
+                        draw.text((rx - (bbox[2]-bbox[0])//2, chart_bottom + 8), txt, fill=text_dim, font=self.font_rank)
+    
+                # Year & Title
+                yr = str(int(float(time_idx)))
+                yb = draw.textbbox((0, 0), yr, font=self.font_year)
+                draw.text(((chart_left+chart_right-(yb[2]-yb[0]))//2, (chart_top+chart_bottom-(yb[3]-yb[1]))//2), yr, fill=year_color, font=self.font_year)
+                self._draw_title(draw, W, H, zones, text_color)
+    
+                # Progress
+                frac = frame_num / (total_frames - 1)
+                draw.rounded_rectangle([chart_left, H-16, chart_right, H-12], radius=2, fill=grid_color)
+                draw.rounded_rectangle([chart_left, H-16, chart_left + int(chart_w * frac), H-12], radius=2, fill=line_color)
+    
                 yield np.asarray(img)
-                continue
-
-            max_val = max(top_entities.max(), 1)
-            min_val = 0
-            
-            target_ranks = {ent: i for i, ent in enumerate(top_entities.index)}
-            for entity in top_entities.index:
-                # Value smoothing
-                target_val = top_entities[entity]
-                if entity not in smooth_vals:
-                    # Start from 0 for a grow-in effect if it's the first time seeing this entity
-                    smooth_vals[entity] = 0.0 
-                
-                smooth_vals[entity] += self.smoothing * (target_val - smooth_vals[entity])
-                
-                # Rank smoothing (X-axis) — extra soft for "soft take overs"
-                target_rank = target_ranks[entity]
-                if entity not in smooth_ranks:
-                    smooth_ranks[entity] = float(target_rank)
-                else:
-                    smooth_ranks[entity] += 0.015 * (target_rank - smooth_ranks[entity])
-
-            # Grid
-            for i in range(6):
-                gy = chart_bottom - int(chart_h * i / 5)
-                draw.line([(chart_left, gy), (chart_right, gy)], fill=grid_color, width=1)
-                gv = min_val + (max_val - min_val) * i / 5
-                draw.text((chart_left - 5, gy - 6), self._format_value(gv), fill=text_dim, font=self.font_axis, anchor="ra")
-
-            # Dots
-            dot_positions = []
-            reveal_x_limit = chart_left + int(reveal_pct * chart_w)
-            for ent in top_entities.index:
-                x = chart_left + int((smooth_ranks[ent] / max(self.top_n - 1, 1)) * chart_w)
-                y = chart_bottom - int(((smooth_vals[ent] - min_val) / (max_val - min_val)) * chart_h)
-                if x <= reveal_x_limit: dot_positions.append((x, y, ent, smooth_vals[ent]))
-            dot_positions.sort(key=lambda d: d[0])
-
-            # Curve & Fill
-            if len(dot_positions) >= 2:
-                pts = [(dp[0], dp[1]) for dp in dot_positions]
-                curve = self._smooth_curve(pts)
-                fill_layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-                ImageDraw.Draw(fill_layer).polygon([(chart_left, chart_bottom)] + curve + [(curve[-1][0], chart_bottom)], fill=(0, 230, 118, 30))
-                img.paste(fill_layer, (0, 0), fill_layer)
-                for i in range(len(curve)-1):
-                    draw.line([curve[i], curve[i+1]], fill=line_color, width=2)
-
-            # Labels
-            for x, y, ent, val in dot_positions:
-                draw.ellipse([x-4, y-4, x+4, y+4], fill=line_color)
-                vtxt = self._format_value(val)
-                
-                emoji = ENTITY_EMOJIS.get(ent)
-                display_text = f"{emoji} {ent}" if emoji else ent
-                
-                lb = pilmoji.getsize(display_text, font=self.font_label)
-                vb = draw.textbbox((0, 0), vtxt, font=self.font_value)
-                
-                bw, bh = max(lb[0], vb[2]-vb[0]) + 24, 48
-                bx0, by0 = max(chart_left, min(x - bw//2, chart_right - bw)), y - 60
-                draw.rounded_rectangle([bx0, by0, bx0+bw, by0+bh], radius=8, fill=(10, 10, 15), outline=(60, 60, 70), width=1)
-                
-                pilmoji.text((bx0 + 12, by0 + 4), display_text, fill='white', font=self.font_label)
-                draw.text((bx0+12, by0+26), vtxt, fill='#AAA', font=self.font_value)
-
-            # Ranks
-            for r in range(self.top_n):
-                rx = chart_left + int((r / max(self.top_n - 1, 1)) * chart_w)
-                if rx <= reveal_x_limit:
-                    txt = f"#{r+1}"
-                    bbox = draw.textbbox((0, 0), txt, font=self.font_rank)
-                    draw.text((rx - (bbox[2]-bbox[0])//2, chart_bottom + 8), txt, fill=text_dim, font=self.font_rank)
-
-            # Year & Title
-            yr = str(int(float(time_idx)))
-            yb = draw.textbbox((0, 0), yr, font=self.font_year)
-            draw.text(((chart_left+chart_right-(yb[2]-yb[0]))//2, (chart_top+chart_bottom-(yb[3]-yb[1]))//2), yr, fill=year_color, font=self.font_year)
-            self._draw_title(draw, W, H, zones, text_color)
-
-            # Progress
-            frac = frame_num / (total_frames - 1)
-            draw.rounded_rectangle([chart_left, H-16, chart_right, H-12], radius=2, fill=grid_color)
-            draw.rounded_rectangle([chart_left, H-16, chart_left + int(chart_w * frac), H-12], radius=2, fill=line_color)
-
-            yield np.asarray(img)
 
         finally:
             shared_pilmoji.close()
