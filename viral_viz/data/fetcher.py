@@ -278,3 +278,61 @@ class DataFetcher:
         raise RuntimeError(
             f"Failed to fetch data from World Bank after {retries} attempts: {last_exception}"
         )
+
+    @staticmethod
+    def from_kaggle(username: str, key: str, dataset_ref: str, filename: str,
+                    index_col: str, entity_col: str = "", value_col: str = "") -> pd.DataFrame:
+        """Fetch and optionally pivot a dataset from Kaggle."""
+        import os
+        import tempfile
+        import zipfile
+
+        # Set Kaggle credentials as environment variables for the Kaggle API
+        os.environ['KAGGLE_USERNAME'] = username
+        os.environ['KAGGLE_KEY'] = key
+
+        try:
+            from kaggle.api.kaggle_api_extended import KaggleApi
+            api = KaggleApi()
+            api.authenticate()
+        except Exception as e:
+            raise RuntimeError(f"Kaggle authentication failed: {e}")
+
+        # Download dataset to a temporary directory
+        with tempfile.TemporaryDirectory() as tmpdir:
+            try:
+                api.dataset_download_files(dataset_ref, path=tmpdir, unzip=True)
+            except Exception as e:
+                raise RuntimeError(f"Failed to download dataset {dataset_ref}: {e}")
+            
+            file_path = os.path.join(tmpdir, filename)
+            if not os.path.exists(file_path):
+                # Try finding it inside nested directories if unzip=True puts it there
+                for root, dirs, files in os.walk(tmpdir):
+                    if filename in files:
+                        file_path = os.path.join(root, filename)
+                        break
+                
+                if not os.path.exists(file_path):
+                    raise FileNotFoundError(f"File '{filename}' not found in the downloaded dataset.")
+
+            df = pd.read_csv(file_path)
+
+            if index_col not in df.columns:
+                raise ValueError(f"Index column '{index_col}' not found in dataset.")
+
+            # If entity and value are provided, pivot the dataframe
+            if entity_col and value_col:
+                if entity_col not in df.columns:
+                    raise ValueError(f"Entity column '{entity_col}' not found in dataset.")
+                if value_col not in df.columns:
+                    raise ValueError(f"Value column '{value_col}' not found in dataset.")
+                
+                df = df.pivot_table(index=index_col, columns=entity_col, values=value_col, aggfunc='first')
+            else:
+                # Assume it's already pivoted, just set the index
+                df = df.set_index(index_col)
+
+            df.index = pd.to_numeric(df.index, errors='ignore')
+            df = df.sort_index()
+            return df
