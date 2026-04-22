@@ -31,21 +31,26 @@ class LineRaceChart:
         self.colors = {cat: bar_colors[i % len(bar_colors)] for i, cat in enumerate(categories)}
 
         # Pre-load fonts
+        if fmt == 'portrait':
+            title_size, year_size, label_size, val_size, axis_size, rank_size = 48, 96, 24, 18, 16, 14
+        else:
+            title_size, year_size, label_size, val_size, axis_size, rank_size = 38, 72, 18, 14, 12, 11
+
         try:
-            self.font_label = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
-            self.font_value = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
-            self.font_year  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 72)
-            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 38)
-            self.font_axis  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 12)
-            self.font_rank  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 11)
+            self.font_label = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", label_size)
+            self.font_value = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", val_size)
+            self.font_year  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", year_size)
+            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", title_size)
+            self.font_axis  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", axis_size)
+            self.font_rank  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", rank_size)
         except (OSError, IOError):
             try:
-                self.font_label = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
-                self.font_value = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-                self.font_year  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 72)
-                self.font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 38)
-                self.font_axis  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
-                self.font_rank  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 11)
+                self.font_label = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", label_size)
+                self.font_value = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", val_size)
+                self.font_year  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", year_size)
+                self.font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", title_size - 10)
+                self.font_axis  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", axis_size)
+                self.font_rank  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", rank_size)
             except (OSError, IOError):
                 self.font_label = ImageFont.load_default()
                 self.font_value = ImageFont.load_default()
