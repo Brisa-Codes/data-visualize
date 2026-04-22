@@ -217,7 +217,14 @@ class LineRaceChart:
                         draw.line([curve[i], curve[i+1]], fill=line_color, width=2)
     
                 # Labels
-                for x, y, ent, val in dot_positions:
+                # Sort so overtaking entities (target_rank - smooth_rank < 0) are drawn LAST (on top)
+                def draw_order(d):
+                    ent = d[2]
+                    return target_ranks[ent] - smooth_ranks[ent]
+                
+                label_positions = sorted(dot_positions, key=draw_order, reverse=True)
+
+                for x, y, ent, val in label_positions:
                     draw.ellipse([x-4, y-4, x+4, y+4], fill=line_color)
                     vtxt = self._format_value(val)
                     

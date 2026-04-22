@@ -164,7 +164,13 @@ class BarChartRace:
                     draw.line([(gx, chart_top), (gx, chart_bottom)], fill=grid_color, width=1)
     
                 # ── Draw bars ────────────────────────────────────────
-                for entity in top_entities.index:
+                # Sort entities so overtaking bars (moving up, target - smooth < 0) are drawn LAST (on top)
+                def draw_order(ent):
+                    return target_y_map[ent] - smooth_y[ent]
+                
+                ordered_entities = sorted(top_entities.index, key=draw_order, reverse=True)
+
+                for entity in ordered_entities:
                     val = top_entities[entity]
                     rank_y = smooth_y[entity]
     
