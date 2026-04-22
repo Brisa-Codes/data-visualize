@@ -142,10 +142,18 @@ class LineRaceChart:
         smooth_vals, smooth_ranks = {}, {}
         reveal_frames = 60
 
-        for frame_num, time_idx in enumerate(indices):
-            reveal_pct = min(frame_num / reveal_frames, 1.0)
-            img = Image.new('RGB', (W, H), bg_color)
-            draw = ImageDraw.Draw(img)
+        dummy_img = Image.new('RGB', (1, 1))
+        shared_pilmoji = Pilmoji(dummy_img)
+
+        try:
+            for frame_num, time_idx in enumerate(indices):
+                reveal_pct = min(frame_num / reveal_frames, 1.0)
+                img = Image.new('RGB', (W, H), bg_color)
+                draw = ImageDraw.Draw(img)
+
+                shared_pilmoji.image = img
+                shared_pilmoji.draw = draw
+                pilmoji = shared_pilmoji
 
             row = self.df.loc[time_idx].dropna()
             top_entities = row.sort_values(ascending=False).head(self.top_n).sort_values(ascending=True)
@@ -200,23 +208,22 @@ class LineRaceChart:
                     draw.line([curve[i], curve[i+1]], fill=line_color, width=2)
 
             # Labels
-            with Pilmoji(img) as pilmoji:
-                for x, y, ent, val in dot_positions:
-                    draw.ellipse([x-4, y-4, x+4, y+4], fill=line_color)
-                    vtxt = self._format_value(val)
-                    
-                    emoji = ENTITY_EMOJIS.get(ent)
-                    display_text = f"{emoji} {ent}" if emoji else ent
-                    
-                    lb = pilmoji.getsize(display_text, font=self.font_label)
-                    vb = draw.textbbox((0, 0), vtxt, font=self.font_value)
-                    
-                    bw, bh = max(lb[0], vb[2]-vb[0]) + 24, 48
-                    bx0, by0 = max(chart_left, min(x - bw//2, chart_right - bw)), y - 60
-                    draw.rounded_rectangle([bx0, by0, bx0+bw, by0+bh], radius=8, fill=(10, 10, 15), outline=(60, 60, 70), width=1)
-                    
-                    pilmoji.text((bx0 + 12, by0 + 4), display_text, fill='white', font=self.font_label)
-                    draw.text((bx0+12, by0+26), vtxt, fill='#AAA', font=self.font_value)
+            for x, y, ent, val in dot_positions:
+                draw.ellipse([x-4, y-4, x+4, y+4], fill=line_color)
+                vtxt = self._format_value(val)
+                
+                emoji = ENTITY_EMOJIS.get(ent)
+                display_text = f"{emoji} {ent}" if emoji else ent
+                
+                lb = pilmoji.getsize(display_text, font=self.font_label)
+                vb = draw.textbbox((0, 0), vtxt, font=self.font_value)
+                
+                bw, bh = max(lb[0], vb[2]-vb[0]) + 24, 48
+                bx0, by0 = max(chart_left, min(x - bw//2, chart_right - bw)), y - 60
+                draw.rounded_rectangle([bx0, by0, bx0+bw, by0+bh], radius=8, fill=(10, 10, 15), outline=(60, 60, 70), width=1)
+                
+                pilmoji.text((bx0 + 12, by0 + 4), display_text, fill='white', font=self.font_label)
+                draw.text((bx0+12, by0+26), vtxt, fill='#AAA', font=self.font_value)
 
             # Ranks
             for r in range(self.top_n):
@@ -238,3 +245,6 @@ class LineRaceChart:
             draw.rounded_rectangle([chart_left, H-16, chart_left + int(chart_w * frac), H-12], radius=2, fill=line_color)
 
             yield np.asarray(img)
+
+        finally:
+            shared_pilmoji.close()

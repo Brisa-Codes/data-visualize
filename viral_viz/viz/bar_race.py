@@ -119,11 +119,19 @@ class BarChartRace:
                       int(bg_g + (wm_g - bg_g) * fade),
                       int(bg_b + (wm_b - bg_b) * fade))
 
-        for frame_num, time_idx in enumerate(indices):
-            img = Image.new('RGB', (W, H), bg_color)
-            draw = ImageDraw.Draw(img)
+        dummy_img = Image.new('RGB', (1, 1))
+        shared_pilmoji = Pilmoji(dummy_img)
 
-            row = self.df.loc[time_idx].dropna()
+        try:
+            for frame_num, time_idx in enumerate(indices):
+                img = Image.new('RGB', (W, H), bg_color)
+                draw = ImageDraw.Draw(img)
+                
+                shared_pilmoji.image = img
+                shared_pilmoji.draw = draw
+                pilmoji = shared_pilmoji
+
+                row = self.df.loc[time_idx].dropna()
             sorted_entities = row.sort_values(ascending=False)
             top_entities = sorted_entities.head(self.top_n)
 
@@ -149,42 +157,41 @@ class BarChartRace:
                 draw.line([(gx, chart_top), (gx, chart_bottom)], fill=grid_color, width=1)
 
             # ── Draw bars ────────────────────────────────────────
-            with Pilmoji(img) as pilmoji:
-                for entity in top_entities.index:
-                    val = top_entities[entity]
-                    rank_y = smooth_y[entity]
+            for entity in top_entities.index:
+                val = top_entities[entity]
+                rank_y = smooth_y[entity]
 
-                    bar_pixel_y = chart_top + int(rank_y * bar_gap) + (bar_gap - bar_h) // 2
-                    bar_pixel_w = int((val / max_val) * chart_w * 0.85)
+                bar_pixel_y = chart_top + int(rank_y * bar_gap) + (bar_gap - bar_h) // 2
+                bar_pixel_w = int((val / max_val) * chart_w * 0.85)
 
-                    x0 = chart_left
-                    y0 = bar_pixel_y
-                    x1 = chart_left + bar_pixel_w
-                    y1 = bar_pixel_y + bar_h
+                x0 = chart_left
+                y0 = bar_pixel_y
+                x1 = chart_left + bar_pixel_w
+                y1 = bar_pixel_y + bar_h
 
-                    color = self.colors.get(entity, '#888888')
-                    draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_radius, fill=color)
+                color = self.colors.get(entity, '#888888')
+                draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_radius, fill=color)
 
-                    # Entity label — inside bar if it fits, else outside
-                    val_text = f'{val:,.0f}'
-                    ly = y0 + (bar_h - 18) // 2
-                    vy = y0 + (bar_h - 16) // 2
+                # Entity label — inside bar if it fits, else outside
+                val_text = f'{val:,.0f}'
+                ly = y0 + (bar_h - 18) // 2
+                vy = y0 + (bar_h - 16) // 2
 
-                    emoji = ENTITY_EMOJIS.get(entity)
-                    display_text = f"{emoji} {entity}" if emoji else entity
+                emoji = ENTITY_EMOJIS.get(entity)
+                display_text = f"{emoji} {entity}" if emoji else entity
 
-                    # Pilmoji textbbox handles the emoji size perfectly
-                    label_bbox = pilmoji.getsize(display_text, font=self.font_label)
-                    label_w = label_bbox[0]
+                # Pilmoji textbbox handles the emoji size perfectly
+                label_bbox = pilmoji.getsize(display_text, font=self.font_label)
+                label_w = label_bbox[0]
 
-                    if label_w + 16 < bar_pixel_w:
-                        # Label fits inside the bar
-                        pilmoji.text((x0 + 8, ly), display_text, fill='white', font=self.font_label)
-                        draw.text((x1 + 6, vy), val_text, fill=text_color, font=self.font_value)
-                    else:
-                        # Label outside bar, then value after it
-                        pilmoji.text((x1 + 6, ly), display_text, fill=text_color, font=self.font_label)
-                        draw.text((x1 + 6 + label_w + 6, vy), val_text, fill=text_dim, font=self.font_value)
+                if label_w + 16 < bar_pixel_w:
+                    # Label fits inside the bar
+                    pilmoji.text((x0 + 8, ly), display_text, fill='white', font=self.font_label)
+                    draw.text((x1 + 6, vy), val_text, fill=text_color, font=self.font_value)
+                else:
+                    # Label outside bar, then value after it
+                    pilmoji.text((x1 + 6, ly), display_text, fill=text_color, font=self.font_label)
+                    draw.text((x1 + 6 + label_w + 6, vy), val_text, fill=text_dim, font=self.font_value)
 
             # ── Year watermark (centered) ─────────────────────────
             current_year = str(int(float(time_idx)))
@@ -217,4 +224,5 @@ class BarChartRace:
             # ── Yield as numpy array ─────────────────────────────
             yield np.asarray(img)
 
-        # No cleanup needed — no matplotlib figures to close
+        finally:
+            shared_pilmoji.close()
