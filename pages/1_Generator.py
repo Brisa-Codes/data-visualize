@@ -28,27 +28,8 @@ st.markdown("""
     header[data-testid="stHeader"] { display: none !important; }
     #MainMenu { display: none !important; }
     footer { display: none !important; }
-
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: #0c0c14;
-        border-right: 1px solid #1a1a2a;
-    }
-    [data-testid="stSidebar"] * { color: #ccc !important; }
-    [data-testid="stSidebar"] .stSelectbox label,
-    [data-testid="stSidebar"] .stTextInput label,
-    [data-testid="stSidebar"] .stRadio label {
-        font-weight: 600 !important;
-        font-size: 0.8rem !important;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #888 !important;
-    }
-    [data-testid="stSidebar"] .stMarkdown h3 {
-        font-size: 0.85rem !important;
-        color: #aaa !important;
-        letter-spacing: 1px;
-    }
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
 
     /* Generate button */
     .stButton > button[kind="primary"] {
@@ -217,13 +198,31 @@ st.markdown("""
     }
     .status-dot.green { background: #00E676; box-shadow: 0 0 8px rgba(0,230,118,0.4); }
 
-    /* Success alert */
-    [data-testid="stAlert"] {
+    /* Expander styling */
+    .stExpander {
+        background: #0f0f16 !important;
+        border: 1px solid #1a1a2a !important;
         border-radius: 10px !important;
-        background: rgba(0, 230, 118, 0.1) !important;
-        border: 1px solid rgba(0, 230, 118, 0.2) !important;
-        color: #00E676 !important;
+        margin-bottom: 0.8rem !important;
     }
+    .stExpander summary { color: #ccc !important; font-weight: 600 !important; }
+    .stExpander [data-testid="stExpanderContent"] { padding: 0.5rem 0.8rem !important; }
+
+    /* Hide sidebar on mobile */
+    @media (max-width: 768px) {
+        [data-testid="stSidebar"] { display: none !important; }
+        [data-testid="collapsedControl"] { display: none !important; }
+        .block-container { padding-left: 0.8rem !important; padding-right: 0.8rem !important; }
+        .gen-header { padding: 0.3rem 0 1rem 0; margin-bottom: 1rem; }
+        .workspace-title h2 { font-size: 1.1rem; }
+        .workspace-icon { width: 30px; height: 30px; font-size: 1rem; }
+        .tag { font-size: 0.6rem !important; padding: 0.25rem 0.5rem !important; }
+        .empty-state { padding: 3rem 1.2rem; }
+        .empty-state h3 { font-size: 1.2rem; }
+        .empty-state p { font-size: 0.85rem; }
+        .status-badges { flex-direction: column; align-items: center; gap: 0.5rem; }
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -240,22 +239,24 @@ st.markdown("""
 
 os.makedirs("renders", exist_ok=True)
 
-# ── Sidebar ──────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("### 📂 DATA SOURCE")
-    data_source = st.radio("Source", ["Built-in Catalog", "CSV Upload", "World Bank API"],
-                           label_visibility="collapsed")
+# ── Input Controls (main area — works on mobile + desktop) ───────────
+input_csv = None
+topic = None
+years = None
+catalog_category = None
+catalog_dataset = None
 
-    input_csv = None
-    topic = None
-    years = None
-    catalog_category = None
-    catalog_dataset = None
+with st.expander("📂 Data Source", expanded=True):
+    data_source = st.radio("Source", ["Built-in Catalog", "CSV Upload", "World Bank API"],
+                           label_visibility="collapsed", horizontal=True)
 
     if data_source == "Built-in Catalog":
-        catalog_category = st.selectbox("Category", get_categories())
-        datasets = get_datasets_in_category(catalog_category)
-        catalog_dataset = st.selectbox("Dataset", datasets)
+        c1, c2 = st.columns(2)
+        with c1:
+            catalog_category = st.selectbox("Category", get_categories())
+        with c2:
+            datasets = get_datasets_in_category(catalog_category)
+            catalog_dataset = st.selectbox("Dataset", datasets)
         st.caption(f"ℹ️ {get_dataset_description(catalog_category, catalog_dataset)}")
     elif data_source == "CSV Upload":
         uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
@@ -264,18 +265,17 @@ with st.sidebar:
         topic = st.text_input("Indicator Code", value="NY.GDP.MKTP.CD")
         years = st.slider("Year Range", 1960, 2023, (2000, 2023))
 
-    st.markdown("---")
-    st.markdown("### 🎨 AESTHETICS")
+with st.expander("🎨 Aesthetics"):
     default_title = catalog_dataset if catalog_dataset else "My Visualization"
     title = st.text_input("Chart Title", value=default_title)
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         theme = st.selectbox("Theme", ["dark", "light"])
     with col2:
         speed = st.selectbox("Speed", ["normal", "fast", "slow"])
-
-    fmt = st.selectbox("Format", ["landscape", "portrait", "both"])
+    with col3:
+        fmt = st.selectbox("Format", ["landscape", "portrait", "both"])
 
 # ── Session state ────────────────────────────────────────────────────
 if "rendered_outputs" not in st.session_state:
