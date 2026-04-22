@@ -5,6 +5,7 @@ from typing import Generator
 
 from .themes import Themes
 from .layout import LayoutManager
+from .emojis import ENTITY_EMOJIS
 
 
 class BarChartRace:
@@ -15,7 +16,7 @@ class BarChartRace:
 
     def __init__(self, df: pd.DataFrame, top_n: int = 10, theme: str = 'dark',
                  fmt: str = 'landscape', title: str = "",
-                 smoothing: float = 0.08):
+                 smoothing: float = 0.025):
         self.df = df
         self.top_n = top_n
         self.theme = theme
@@ -32,7 +33,7 @@ class BarChartRace:
             self.font_label = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
             self.font_value = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
             self.font_year  = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 72)
-            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 44)
+            self.font_title = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 38)
         except (OSError, IOError):
             try:
                 self.font_label = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
@@ -44,6 +45,39 @@ class BarChartRace:
                 self.font_value = ImageFont.load_default()
                 self.font_year  = ImageFont.load_default()
                 self.font_title = ImageFont.load_default()
+
+        # Emoji font
+        try:
+            self.font_emoji = ImageFont.truetype("/System/Library/Fonts/Apple Color Emoji.ttc", 18)
+        except OSError:
+            self.font_emoji = None
+
+    def _draw_title(self, draw, W, H, zones, text_color):
+        if not self.title: return
+        
+        # Simple wrapping
+        words = self.title.split()
+        lines = []
+        current_line = []
+        max_w = W * 0.9
+        
+        for word in words:
+            test_line = " ".join(current_line + [word])
+            bbox = draw.textbbox((0, 0), test_line, font=self.font_title)
+            if bbox[2] - bbox[0] <= max_w:
+                current_line.append(word)
+            else:
+                lines.append(" ".join(current_line))
+                current_line = [word]
+        lines.append(" ".join(current_line))
+        
+        # Draw lines
+        line_h = 44
+        ty = int(H * (1 - zones['title_y']))
+        for i, line in enumerate(lines):
+            bbox = draw.textbbox((0, 0), line, font=self.font_title)
+            tx = (W - (bbox[2] - bbox[0])) // 2
+            draw.text((tx, ty + i * line_h), line, fill=text_color, font=self.font_title)
 
     def generate_frames(self) -> Generator[np.ndarray, None, None]:
         """Generator yielding RGB numpy arrays rendered via PIL."""
@@ -68,7 +102,11 @@ class BarChartRace:
         bar_radius = max(bar_h // 4, 4)
 
         smooth_y = {}
-        total_frames = len(self.df)
+        # Add 60 hold frames at the end (2 seconds at 30fps)
+        indices = list(self.df.index)
+        last_idx = indices[-1]
+        indices += [last_idx] * 60
+        total_frames = len(indices)
 
         bg_color = palette['bg']
         text_color = palette['text']
@@ -86,7 +124,7 @@ class BarChartRace:
                       int(bg_g + (wm_g - bg_g) * fade),
                       int(bg_b + (wm_b - bg_b) * fade))
 
-        for frame_num, time_idx in enumerate(self.df.index):
+        for frame_num, time_idx in enumerate(indices):
             img = Image.new('RGB', (W, H), bg_color)
             draw = ImageDraw.Draw(img)
 
@@ -132,19 +170,37 @@ class BarChartRace:
                 draw.rounded_rectangle([x0, y0, x1, y1], radius=bar_radius, fill=color)
 
                 # Entity label — inside bar if it fits, else outside
-                label_bbox = draw.textbbox((0, 0), entity, font=self.font_label)
-                label_w = label_bbox[2] - label_bbox[0]
                 val_text = f'{val:,.0f}'
                 ly = y0 + (bar_h - 18) // 2
                 vy = y0 + (bar_h - 16) // 2
 
+                emoji = ENTITY_EMOJIS.get(entity)
+                emoji_w = 26 if (emoji and self.font_emoji) else 0
+
+                label_bbox = draw.textbbox((0, 0), entity, font=self.font_label)
+                label_w = label_bbox[2] - label_bbox[0] + emoji_w
+
                 if label_w + 16 < bar_pixel_w:
                     # Label fits inside the bar
-                    draw.text((x0 + 8, ly), entity, fill='white', font=self.font_label)
+                    text_x = x0 + 8
+                    if emoji and self.font_emoji:
+                        try:
+                            draw.text((text_x, ly), emoji, font=self.font_emoji, embedded_color=True)
+                        except:
+                            draw.text((text_x, ly), emoji, font=self.font_emoji)
+                        text_x += emoji_w
+                    draw.text((text_x, ly), entity, fill='white', font=self.font_label)
                     draw.text((x1 + 6, vy), val_text, fill=text_color, font=self.font_value)
                 else:
                     # Label outside bar, then value after it
-                    draw.text((x1 + 6, ly), entity, fill=text_color, font=self.font_label)
+                    text_x = x1 + 6
+                    if emoji and self.font_emoji:
+                        try:
+                            draw.text((text_x, ly), emoji, font=self.font_emoji, embedded_color=True)
+                        except:
+                            draw.text((text_x, ly), emoji, font=self.font_emoji)
+                        text_x += emoji_w
+                    draw.text((text_x, ly), entity, fill=text_color, font=self.font_label)
                     draw.text((x1 + 6 + label_w + 6, vy), val_text, fill=text_dim, font=self.font_value)
 
             # ── Year watermark (centered) ─────────────────────────
@@ -158,13 +214,7 @@ class BarChartRace:
                       fill=year_color, font=self.font_year)
 
             # ── Title ────────────────────────────────────────────
-            if self.title:
-                # Center title
-                bbox = draw.textbbox((0, 0), self.title, font=self.font_title)
-                tw = bbox[2] - bbox[0]
-                tx = (W - tw) // 2
-                ty = int(H * (1 - zones['title_y']))
-                draw.text((tx, ty), self.title, fill=text_color, font=self.font_title)
+            self._draw_title(draw, W, H, zones, text_color)
 
             # ── Progress bar ─────────────────────────────────────
             progress_frac = frame_num / max(total_frames - 1, 1)
