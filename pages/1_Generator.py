@@ -370,7 +370,7 @@ with st.expander("🎨 Step 3: Aesthetics"):
     with col2:
         speed = st.selectbox("Speed", ["normal", "fast", "slow"])
     with col3:
-        fmt = st.selectbox("Format", ["landscape", "portrait", "both"])
+        fmt = st.selectbox("Format", ["landscape", "portrait"])
 
 # ── Session state ────────────────────────────────────────────────────
 if "rendered_outputs" not in st.session_state:
