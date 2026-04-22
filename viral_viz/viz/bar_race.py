@@ -76,13 +76,15 @@ class BarChartRace:
         grid_color = palette['grid']
         accent_color = palette['accent']
 
-        # Pre-compute faded year watermark color (20% blend of text_dim over bg)
+        # Pre-compute faded year watermark color (10% blend — subtle watermark)
         bg_r, bg_g, bg_b = int(bg_color[1:3], 16), int(bg_color[3:5], 16), int(bg_color[5:7], 16)
-        dm_r, dm_g, dm_b = int(text_dim[1:3], 16), int(text_dim[3:5], 16), int(text_dim[5:7], 16)
-        fade = 0.2
-        year_color = (int(bg_r + (dm_r - bg_r) * fade),
-                      int(bg_g + (dm_g - bg_g) * fade),
-                      int(bg_b + (dm_b - bg_b) * fade))
+        # On dark bg → blend toward white; on light bg → blend toward black
+        bg_luma = (bg_r * 299 + bg_g * 587 + bg_b * 114) / 1000
+        wm_r, wm_g, wm_b = (255, 255, 255) if bg_luma < 128 else (0, 0, 0)
+        fade = 0.10
+        year_color = (int(bg_r + (wm_r - bg_r) * fade),
+                      int(bg_g + (wm_g - bg_g) * fade),
+                      int(bg_b + (wm_b - bg_b) * fade))
 
         for frame_num, time_idx in enumerate(self.df.index):
             img = Image.new('RGB', (W, H), bg_color)
