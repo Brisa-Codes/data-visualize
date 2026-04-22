@@ -334,12 +334,13 @@ class DataFetcher:
         csv_files.sort(key=os.path.getsize, reverse=True)
         
         df = pd.read_csv(csv_files[0], nrows=5)
+        df["Row Count (Frequency)"] = 1
         num_cols = df.select_dtypes(include='number').columns.tolist()
         return df.columns.tolist(), num_cols, os.path.basename(csv_files[0])
 
     @staticmethod
     def from_kaggle(dataset_ref: str, filename: str,
-                    index_col: str, entity_col: str = "", value_col: str = "") -> pd.DataFrame:
+                    index_col: str, entity_col: str = "", value_col: str = "", query_filter: str = "") -> pd.DataFrame:
         """Fetch and optionally pivot a dataset from Kaggle using kagglehub."""
         import os
         import kagglehub
@@ -362,6 +363,13 @@ class DataFetcher:
             raise FileNotFoundError(f"File '{filename}' not found.")
 
         df = pd.read_csv(file_path)
+        df["Row Count (Frequency)"] = 1
+        
+        if query_filter:
+            try:
+                df = df.query(query_filter)
+            except Exception as e:
+                raise ValueError(f"Failed to apply Data Filter '{query_filter}': {e}")
 
         if index_col not in df.columns:
             raise ValueError(f"Index column '{index_col}' not found in dataset.")

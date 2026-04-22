@@ -375,6 +375,7 @@ with st.expander("📂 Step 2: Data Source", expanded=True):
         kaggle_index = ""
         kaggle_entity = ""
         kaggle_value = ""
+        kaggle_filter = ""
         if st.session_state.kaggle_results:
             options = {f"{r['title']} ({r['ref']})": r['ref'] for r in st.session_state.kaggle_results}
             selected_option = st.selectbox("Select a Dataset", list(options.keys()))
@@ -396,6 +397,8 @@ with st.expander("📂 Step 2: Data Source", expanded=True):
                         kaggle_entity = st.selectbox("Entity (Line/Bar)", [""] + cols)
                     with k_col3:
                         kaggle_value = st.selectbox("Value (Y-Axis)", [""] + num_cols)
+                        
+                    kaggle_filter = st.text_input("Optional Data Filter (e.g. `transit_status == 'Passed'`)")
                 except Exception as e:
                     st.error(f"Failed to load dataset preview: {e}")
 
@@ -440,7 +443,8 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
                     filename=kaggle_filename,
                     index_col=kaggle_index,
                     entity_col=kaggle_entity,
-                    value_col=kaggle_value
+                    value_col=kaggle_value,
+                    query_filter=kaggle_filter
                 )
             progress.progress(10, text="Interpolating frames...")
 
