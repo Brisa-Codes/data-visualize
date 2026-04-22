@@ -280,9 +280,29 @@ class DataFetcher:
         )
 
     @staticmethod
-    def search_kaggle(query: str, token: str = "KGAT_48341c2a075b3d792914f46a3d194a2b") -> list:
+    def get_kaggle_token() -> str:
+        """Retrieve Kaggle API token securely from environment or Streamlit secrets."""
+        import os
+        try:
+            import streamlit as st
+            try:
+                if "KAGGLE_API_TOKEN" in st.secrets:
+                    return st.secrets["KAGGLE_API_TOKEN"]
+            except Exception:
+                pass
+        except ImportError:
+            pass
+            
+        token = os.environ.get("KAGGLE_API_TOKEN")
+        if not token:
+            raise ValueError("KAGGLE_API_TOKEN is not set in environment or Streamlit secrets.")
+        return token
+
+    @staticmethod
+    def search_kaggle(query: str) -> list:
         """Search Kaggle datasets using the REST API."""
         import requests
+        token = DataFetcher.get_kaggle_token()
         headers = {'Authorization': f'Bearer {token}'}
         try:
             resp = requests.get(f'https://www.kaggle.com/api/v1/datasets/list?search={query}', headers=headers)
@@ -293,13 +313,13 @@ class DataFetcher:
             raise RuntimeError(f"Kaggle search failed: {e}")
 
     @staticmethod
-    def from_kaggle(dataset_ref: str, token: str = "KGAT_48341c2a075b3d792914f46a3d194a2b", filename: str = "",
+    def from_kaggle(dataset_ref: str, filename: str = "",
                     index_col: str = "", entity_col: str = "", value_col: str = "") -> pd.DataFrame:
         """Fetch and optionally pivot a dataset from Kaggle using kagglehub with auto-detection."""
         import os
         import kagglehub
 
-        os.environ['KAGGLE_API_TOKEN'] = token
+        os.environ['KAGGLE_API_TOKEN'] = DataFetcher.get_kaggle_token()
 
         try:
             tmpdir = kagglehub.dataset_download(dataset_ref)
@@ -366,7 +386,16 @@ class DataFetcher:
         else:
             df = df.set_index(index_col)
 
-        df.index = pd.to_numeric(df.index, errors='coerce')
-        df = df.dropna(subset=[df.index.name] if df.index.name else None)
+        # Convert index to numeric or datetime
+        # If it's something like "2026-03-01", numeric conversion will coerce to NaN.
+        # Let's try datetime first, then extract year if it succeeds, else numeric.
+        try:
+            dt_index = pd.to_datetime(df.index, format='mixed')
+            # If successfully converted to datetime, let's use the year as the index for chart
+            df.index = dt_index.year
+        except Exception:
+            df.index = pd.to_numeric(df.index, errors='coerce')
+            
+        df = df[df.index.notna()]
         df = df.sort_index()
         return df
