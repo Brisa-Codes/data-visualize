@@ -21,7 +21,70 @@ st.markdown("""
 
     * { font-family: 'Inter', sans-serif; }
     h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif !important; }
-    .block-container { padding-top: 1.5rem; max-width: 1100px; }
+    .block-container { padding-top: 3.5rem; max-width: 1100px; }
+
+    /* ── Navbar ────────────────────────────────────── */
+    .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 2rem;
+        background: rgba(10, 10, 18, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid #1a1a2a;
+    }
+    .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        text-decoration: none !important;
+        color: #f0f0f0 !important;
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+        font-size: 1.1rem;
+        letter-spacing: -0.3px;
+    }
+    .nav-logo-icon {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 3px;
+    }
+    .nav-logo-icon .bar {
+        background: #FF6B35;
+        width: 4px;
+        border-radius: 2px 2px 0 0;
+    }
+    .nav-logo-icon .bar:nth-child(1) { height: 11px; }
+    .nav-logo-icon .bar:nth-child(2) { height: 18px; }
+    .nav-logo-icon .bar:nth-child(3) { height: 14px; }
+    .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .nav-right a {
+        color: #888 !important;
+        text-decoration: none !important;
+        font-size: 0.82rem;
+        font-weight: 500;
+        padding: 0.35rem 0.7rem;
+        border-radius: 6px;
+        transition: color 0.2s;
+    }
+    .nav-right a:hover { color: #f0f0f0 !important; }
+    .nav-active {
+        background: rgba(255, 107, 53, 0.1) !important;
+        color: #FF6B35 !important;
+    }
 
     /* Hide Streamlit chrome */
     [data-testid="stToolbar"] { display: none !important; }
@@ -212,7 +275,12 @@ st.markdown("""
     @media (max-width: 768px) {
         [data-testid="stSidebar"] { display: none !important; }
         [data-testid="collapsedControl"] { display: none !important; }
-        .block-container { padding-left: 0.8rem !important; padding-right: 0.8rem !important; }
+        .block-container { padding-left: 0.8rem !important; padding-right: 0.8rem !important; padding-top: 3rem !important; }
+        .navbar { padding: 0.5rem 0.8rem; }
+        .nav-logo { font-size: 0.95rem; }
+        .nav-logo-icon { width: 18px; height: 18px; gap: 2px; }
+        .nav-logo-icon .bar { width: 3px; }
+        .nav-right a { font-size: 0.72rem; padding: 0.3rem 0.5rem; }
         .gen-header { padding: 0.3rem 0 1rem 0; margin-bottom: 1rem; }
         .workspace-title h2 { font-size: 1.1rem; }
         .workspace-icon { width: 30px; height: 30px; font-size: 1rem; }
@@ -224,6 +292,24 @@ st.markdown("""
     }
 
 </style>
+""", unsafe_allow_html=True)
+
+# ── Navbar ───────────────────────────────────────────────────────────
+st.markdown("""
+<div class="navbar">
+    <a class="nav-logo" href="/" target="_self">
+        <div class="nav-logo-icon">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        ViralViz
+    </a>
+    <div class="nav-right">
+        <a href="/" target="_self">Home</a>
+        <a class="nav-active" href="#">Generator</a>
+    </div>
+</div>
 """, unsafe_allow_html=True)
 
 # ── Header ───────────────────────────────────────────────────────────
