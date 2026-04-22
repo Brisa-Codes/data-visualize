@@ -9,6 +9,7 @@ from viral_viz.data.fetcher import DataFetcher, get_categories, get_datasets_in_
 from viral_viz.data.preprocessor import DataPreprocessor
 from viral_viz.export.packager import DualPackager
 from viral_viz.viz.bar_race import BarChartRace
+from viral_viz.viz.line_race import LineRaceChart
 from viral_viz.export.renderer import VideoRenderer
 import time
 
@@ -332,9 +333,17 @@ years = None
 catalog_category = None
 catalog_dataset = None
 
-with st.expander("📂 Data Source", expanded=True):
+# 1. Visualization Mode
+chart_type_label = st.radio("Step 1: Choose Visualization Type", ["Bar Race", "Line Race"],
+                            horizontal=True, help="Bar Race = horizontal bars. Line Race = ranked curve chart.")
+chart_type = "bar" if chart_type_label == "Bar Race" else "line"
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+with st.expander("📂 Step 2: Data Source", expanded=True):
     data_source = st.radio("Source", ["Built-in Catalog", "CSV Upload", "World Bank API"],
                            label_visibility="collapsed", horizontal=True)
+    # ... rest of data source logic ...
 
     if data_source == "Built-in Catalog":
         c1, c2 = st.columns(2)
@@ -351,7 +360,7 @@ with st.expander("📂 Data Source", expanded=True):
         topic = st.text_input("Indicator Code", value="NY.GDP.MKTP.CD")
         years = st.slider("Year Range", 1960, 2023, (2000, 2023))
 
-with st.expander("🎨 Aesthetics"):
+with st.expander("🎨 Step 3: Aesthetics"):
     default_title = catalog_dataset if catalog_dataset else "My Visualization"
     title = st.text_input("Chart Title", value=default_title)
 
@@ -409,6 +418,7 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
                 outputs = DualPackager.export_both(
                     df_interpolated, top_n=10, theme=theme, fps=fps,
                     output_dir="renders", base_name=base_name, title=title,
+                    chart_type=chart_type,
                     on_progress=update_progress
                 )
             else:
@@ -417,10 +427,11 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
                     pct = min(pct, 95)
                     progress.progress(pct, text=f"Rendering {fmt}... {int(cur/tot*100)}%")
 
-                race = BarChartRace(df_interpolated, top_n=10, theme=theme, fmt=fmt, title=title)
+                ChartClass = LineRaceChart if chart_type == "line" else BarChartRace
+                chart = ChartClass(df_interpolated, top_n=10, theme=theme, fmt=fmt, title=title)
                 out_path = os.path.join("renders", f"{base_name}_{fmt}.mp4")
                 VideoRenderer.render_generator(
-                    race.generate_frames(), fps, out_path, audio_clip=None,
+                    chart.generate_frames(), fps, out_path, audio_clip=None,
                     total_frames=total_frames, on_progress=single_progress
                 )
                 outputs = [out_path]

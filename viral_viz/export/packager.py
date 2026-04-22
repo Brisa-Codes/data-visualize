@@ -1,6 +1,7 @@
 import os
 from .renderer import VideoRenderer
 from ..viz.bar_race import BarChartRace
+from ..viz.line_race import LineRaceChart
 import pandas as pd
 from typing import Callable, Optional
 
@@ -12,15 +13,18 @@ class DualPackager:
     def export_both(df: pd.DataFrame, top_n: int, theme: str, fps: int,
                     output_dir: str, base_name: str, audio_clip=None,
                     title: str = "",
+                    chart_type: str = "bar",
                     on_progress: Optional[Callable[[str, int, int], None]] = None):
         """Generates both landscape and portrait versions with progress."""
         formats = ['landscape', 'portrait']
         outputs = []
         total_frames = len(df)
 
+        ChartClass = LineRaceChart if chart_type == "line" else BarChartRace
+
         for fmt in formats:
-            race = BarChartRace(df, top_n=top_n, theme=theme, fmt=fmt, title=title)
-            frame_gen = race.generate_frames()
+            chart = ChartClass(df, top_n=top_n, theme=theme, fmt=fmt, title=title)
+            frame_gen = chart.generate_frames()
             output_path = os.path.join(output_dir, f"{base_name}_{fmt}.mp4")
 
             def _progress(cur, tot, _fmt=fmt):

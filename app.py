@@ -167,63 +167,7 @@ st.markdown("""
         max-width: 960px;
     }
     /* ── Mobile Responsive ─────────────────────────── */
-    @media (max-width: 768px) {
-        /* Navbar */
-        .navbar { padding: 0.6rem 1rem; }
-        .nav-logo { font-size: 1rem; gap: 0.4rem; }
-        .nav-logo-icon { width: 20px; height: 20px; gap: 2px; }
-        .nav-logo-icon .bar { width: 3px; }
-        .nav-logo-icon .bar:nth-child(1) { height: 9px; }
-        .nav-logo-icon .bar:nth-child(2) { height: 16px; }
-        .nav-logo-icon .bar:nth-child(3) { height: 12px; }
-        .nav-links a { font-size: 0.72rem; padding: 0.3rem 0.4rem; }
-        .nav-sep { display: none; }
-        .nav-cta { padding: 0.4rem 0.7rem !important; font-size: 0.72rem !important; margin-left: 0.2rem; }
 
-        /* Hero */
-        .hero { padding: 5.5rem 1rem 1.5rem 1rem; }
-        .hero h1 { font-size: 2.2rem; letter-spacing: -0.8px; }
-        .hero p { font-size: 0.9rem; max-width: 100%; }
-        .hero-tag { font-size: 0.65rem; padding: 0.25rem 0.6rem; margin-bottom: 1.2rem; }
-
-        /* CTA button */
-        .cta-btn { font-size: 0.9rem; padding: 0.7rem 1.8rem; width: 100%; text-align: center; box-sizing: border-box; }
-
-        /* Stats */
-        .stats { gap: 1.5rem; margin: 2.5rem 0; }
-        .stat-val { font-size: 1.8rem; }
-        .stat-lbl { font-size: 0.65rem; }
-
-        /* Features grid */
-        .features { grid-template-columns: 1fr; gap: 1rem; margin-bottom: 3rem; }
-        .feat { padding: 1.5rem 1.2rem; }
-
-        /* Steps grid */
-        .steps { grid-template-columns: 1fr; gap: 1.2rem; margin-bottom: 3rem; }
-
-        /* Section heads */
-        .section-head { font-size: 1.2rem; }
-        .section-sub { font-size: 0.78rem; }
-
-        /* Footer */
-        .footer { padding: 2rem 1rem 1.5rem; }
-        .footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
-        .footer-brand p { font-size: 0.75rem; }
-        .footer-copy { margin-top: 1.5rem; padding-top: 1rem; }
-
-        /* Streamlit overrides */
-        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
-    }
-
-    /* Extra small (< 400px) */
-    @media (max-width: 400px) {
-        .hero h1 { font-size: 1.8rem; }
-        .hero p { font-size: 0.82rem; }
-        .stat-val { font-size: 1.5rem; }
-        .stats { flex-direction: column; gap: 1rem; }
-        .navbar { padding: 0.5rem 0.7rem; }
-        .nav-links a:not(.nav-cta) { display: none; }
-    }
     .feat {
         background: #111119;
         border: 1px solid #1e1e2e;
@@ -363,6 +307,82 @@ st.markdown("""
     .cta-btn:hover {
         background: #e55a28;
     }
+
+    /* ── Mobile Responsive ─────────────────────────── */
+    @media (max-width: 768px) {
+        /* Navbar */
+        .navbar { padding: 0.6rem 1rem; }
+        .nav-logo { font-size: 1rem; gap: 0.4rem; }
+        .nav-logo-icon { width: 20px; height: 20px; gap: 2px; }
+        .nav-logo-icon .bar { width: 3px; }
+        .nav-logo-icon .bar:nth-child(1) { height: 9px; }
+        .nav-logo-icon .bar:nth-child(2) { height: 16px; }
+        .nav-logo-icon .bar:nth-child(3) { height: 12px; }
+        .nav-links a { font-size: 0.72rem; padding: 0.3rem 0.4rem; }
+        .nav-sep { display: none; }
+        .nav-cta { padding: 0.4rem 0.7rem !important; font-size: 0.72rem !important; margin-left: 0.2rem; }
+
+        /* Hero */
+        .hero { padding: 5.5rem 1rem 1.5rem 1rem; }
+        .hero h1 { font-size: 2.2rem; letter-spacing: -0.8px; }
+        .hero p { font-size: 0.9rem; max-width: 100%; }
+        .hero-tag { font-size: 0.65rem; padding: 0.25rem 0.6rem; margin-bottom: 1.2rem; }
+
+        /* CTA button */
+        .cta-btn { font-size: 0.9rem; padding: 0.7rem 1.8rem; width: 100%; text-align: center; box-sizing: border-box; }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            margin: 2rem 0;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .stat-val { font-size: 1.6rem; }
+        .stat-lbl { font-size: 0.6rem; }
+
+        /* Features grid */
+        .features { grid-template-columns: 1fr; gap: 0.8rem; margin-bottom: 2.5rem; }
+        .feat { padding: 1rem 1rem; }
+        .feat-icon { font-size: 1.4rem; margin-bottom: 0.5rem; }
+        .feat h3 { margin-bottom: 0.3rem; }
+        .feat p { font-size: 0.78rem; }
+
+        /* Steps grid */
+        .steps { grid-template-columns: 1fr !important; gap: 1rem; margin-bottom: 3rem; }
+        .step { display: flex; text-align: left; align-items: center; gap: 1rem; padding: 0.8rem 0.5rem; }
+        .step-n { margin-bottom: 0; min-width: 30px; width: 30px; height: 30px; font-size: 0.8rem; border-radius: 6px; }
+        .step h4 { margin-bottom: 0.1rem; font-size: 0.9rem; }
+        .step p { margin: 0; font-size: 0.75rem; }
+
+        /* Section heads */
+        .section-head { font-size: 1.2rem; }
+        .section-sub { font-size: 0.78rem; }
+
+        /* Footer */
+        .footer { padding: 2rem 1rem 1.5rem; }
+        .footer-grid { grid-template-columns: 1fr !important; gap: 1.5rem; text-align: center; }
+        .footer-brand p { font-size: 0.75rem; max-width: 280px; margin: 0.8rem auto 0; }
+        .footer-col { text-align: center; }
+        .footer-col a { display: inline-block; margin: 0.2rem 0.5rem; }
+        .footer-copy { margin-top: 1.5rem; padding-top: 1rem; }
+
+        /* Streamlit overrides */
+        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
+    }
+
+    /* Extra small (< 400px) */
+    @media (max-width: 400px) {
+        .hero h1 { font-size: 1.8rem; }
+        .hero p { font-size: 0.82rem; }
+        .stat-val { font-size: 1.5rem; }
+        .stats { grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .navbar { padding: 0.5rem 0.7rem; }
+        .nav-links a:not(.nav-cta) { display: none; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -404,20 +424,20 @@ st.markdown("""
 st.markdown("""
 <div class="stats">
     <div class="stat">
-        <div class="stat-val">10+</div>
+        <div class="stat-val">15+</div>
         <div class="stat-lbl">Datasets</div>
     </div>
     <div class="stat">
-        <div class="stat-val">720p</div>
-        <div class="stat-lbl">HD Output</div>
+        <div class="stat-val">2</div>
+        <div class="stat-lbl">Modes</div>
     </div>
     <div class="stat">
         <div class="stat-val">~10s</div>
         <div class="stat-lbl">Render Time</div>
     </div>
     <div class="stat">
-        <div class="stat-val">2</div>
-        <div class="stat-lbl">Formats</div>
+        <div class="stat-val">HD</div>
+        <div class="stat-lbl">Output</div>
     </div>
 </div>
 <div class="divider"></div>
@@ -428,8 +448,8 @@ st.markdown("""
 <div class="features">
     <div class="feat">
         <div class="feat-icon">◐</div>
-        <h3>Smooth Motion</h3>
-        <p>Bars glide with exponential easing. Rank changes feel cinematic, not jumpy.</p>
+        <h3>Bar & Line Race</h3>
+        <p>Switch between classic bar races and smooth, ranked line charts for billionaire wealth tracking.</p>
     </div>
     <div class="feat">
         <div class="feat-icon">▯</div>
