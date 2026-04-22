@@ -313,9 +313,34 @@ class DataFetcher:
             raise RuntimeError(f"Kaggle search failed: {e}")
 
     @staticmethod
-    def from_kaggle(dataset_ref: str, filename: str = "",
-                    index_col: str = "", entity_col: str = "", value_col: str = "") -> pd.DataFrame:
-        """Fetch and optionally pivot a dataset from Kaggle using kagglehub with auto-detection."""
+    def preview_kaggle(dataset_ref: str) -> tuple:
+        """Fetch a dataset from Kaggle just to get its columns."""
+        import os
+        import kagglehub
+
+        os.environ['KAGGLE_API_TOKEN'] = DataFetcher.get_kaggle_token()
+        try:
+            tmpdir = kagglehub.dataset_download(dataset_ref)
+        except Exception as e:
+            raise RuntimeError(f"Failed to download dataset {dataset_ref}: {e}")
+            
+        csv_files = []
+        for root, dirs, files in os.walk(tmpdir):
+            for f in files:
+                if f.endswith('.csv'):
+                    csv_files.append(os.path.join(root, f))
+        if not csv_files:
+            raise FileNotFoundError("No CSV files found.")
+        csv_files.sort(key=os.path.getsize, reverse=True)
+        
+        df = pd.read_csv(csv_files[0], nrows=5)
+        num_cols = df.select_dtypes(include='number').columns.tolist()
+        return df.columns.tolist(), num_cols, os.path.basename(csv_files[0])
+
+    @staticmethod
+    def from_kaggle(dataset_ref: str, filename: str,
+                    index_col: str, entity_col: str = "", value_col: str = "") -> pd.DataFrame:
+        """Fetch and optionally pivot a dataset from Kaggle using kagglehub."""
         import os
         import kagglehub
 
@@ -326,76 +351,43 @@ class DataFetcher:
         except Exception as e:
             raise RuntimeError(f"Failed to download dataset {dataset_ref}: {e}")
             
-        if filename:
-            file_path = os.path.join(tmpdir, filename)
-            if not os.path.exists(file_path):
-                for root, dirs, files in os.walk(tmpdir):
-                    if filename in files:
-                        file_path = os.path.join(root, filename)
-                        break
-        else:
-            csv_files = []
+        file_path = os.path.join(tmpdir, filename)
+        if not os.path.exists(file_path):
             for root, dirs, files in os.walk(tmpdir):
-                for f in files:
-                    if f.endswith('.csv'):
-                        csv_files.append(os.path.join(root, f))
-            if not csv_files:
-                raise FileNotFoundError("No CSV files found in the downloaded Kaggle dataset.")
-            csv_files.sort(key=os.path.getsize, reverse=True)
-            file_path = csv_files[0]
+                if filename in files:
+                    file_path = os.path.join(root, filename)
+                    break
 
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found in the downloaded dataset.")
+            raise FileNotFoundError(f"File '{filename}' not found.")
 
         df = pd.read_csv(file_path)
-
-        if not index_col:
-            for col in df.columns:
-                if str(col).lower() in ['year', 'date', 'time', 'period']:
-                    index_col = col
-                    break
-            if not index_col:
-                index_col = df.columns[0]
 
         if index_col not in df.columns:
             raise ValueError(f"Index column '{index_col}' not found in dataset.")
 
-        if not entity_col and not value_col:
-            str_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
-            num_cols = df.select_dtypes(include=['number']).columns.tolist()
-            
-            if index_col in str_cols: str_cols.remove(index_col)
-            if index_col in num_cols: num_cols.remove(index_col)
-
-            if len(str_cols) >= 1 and len(num_cols) >= 1:
-                entity_col = str_cols[0]
-                for col in str_cols:
-                    if any(x in str(col).lower() for x in ['country', 'name', 'entity', 'state', 'category']):
-                        entity_col = col
-                        break
-                
-                value_col = num_cols[0]
-                for col in num_cols:
-                    if any(x in str(col).lower() for x in ['value', 'amount', 'total', 'population', 'gdp', 'count']):
-                        value_col = col
-                        break
-
         if entity_col and value_col:
             if entity_col in df.columns and value_col in df.columns:
-                df = df.pivot_table(index=index_col, columns=entity_col, values=value_col, aggfunc='first')
+                df = df.pivot_table(index=index_col, columns=entity_col, values=value_col, aggfunc='sum')
         else:
             df = df.set_index(index_col)
 
-        # Convert index to numeric or datetime
-        # If it's something like "2026-03-01", numeric conversion will coerce to NaN.
-        # Let's try datetime first, then extract year if it succeeds, else numeric.
+        # Convert index to numeric year fraction (e.g., 2026-03-01 -> 2026.16)
         try:
             dt_index = pd.to_datetime(df.index, format='mixed')
-            # If successfully converted to datetime, let's use the year as the index for chart
-            df.index = dt_index.year
+            # year + day_of_year / 365
+            df.index = dt_index.year + (dt_index.dayofyear - 1) / 365.0
         except Exception:
             df.index = pd.to_numeric(df.index, errors='coerce')
             
         df = df[df.index.notna()]
+        
+        if df.empty:
+            raise ValueError(f"The selected X-Axis column '{index_col}' could not be converted to a time/numeric index. Please ensure you selected a valid Date or Year column.")
+            
+        # If there are still duplicates after year-fraction, group them by mean
+        if df.index.duplicated().any():
+            df = df.groupby(df.index).mean()
+            
         df = df.sort_index()
         return df

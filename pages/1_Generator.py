@@ -371,10 +371,33 @@ with st.expander("📂 Step 2: Data Source", expanded=True):
                     st.session_state.kaggle_results = DataFetcher.search_kaggle(search_query)
         
         kaggle_dataset = ""
+        kaggle_filename = ""
+        kaggle_index = ""
+        kaggle_entity = ""
+        kaggle_value = ""
         if st.session_state.kaggle_results:
             options = {f"{r['title']} ({r['ref']})": r['ref'] for r in st.session_state.kaggle_results}
             selected_option = st.selectbox("Select a Dataset", list(options.keys()))
             kaggle_dataset = options[selected_option]
+            
+            if kaggle_dataset:
+                try:
+                    cols, num_cols, kaggle_filename = DataFetcher.preview_kaggle(kaggle_dataset)
+                    st.markdown("### Map Columns")
+                    k_col1, k_col2, k_col3 = st.columns(3)
+                    with k_col1:
+                        guess_idx = 0
+                        for i, c in enumerate(cols):
+                            if str(c).lower() in ['year', 'date', 'time', 'period']:
+                                guess_idx = i
+                                break
+                        kaggle_index = st.selectbox("Time/Date (X-Axis)", cols, index=guess_idx)
+                    with k_col2:
+                        kaggle_entity = st.selectbox("Entity (Line/Bar)", [""] + cols)
+                    with k_col3:
+                        kaggle_value = st.selectbox("Value (Y-Axis)", [""] + num_cols)
+                except Exception as e:
+                    st.error(f"Failed to load dataset preview: {e}")
 
 with st.expander("🎨 Step 3: Aesthetics"):
     default_title = catalog_dataset if catalog_dataset else "My Visualization"
@@ -413,7 +436,11 @@ if st.button("Generate Video →", type="primary", use_container_width=True):
                 
                 progress.progress(5, text="Fetching data from Kaggle...")
                 df = DataFetcher.from_kaggle(
-                    dataset_ref=kaggle_dataset
+                    dataset_ref=kaggle_dataset,
+                    filename=kaggle_filename,
+                    index_col=kaggle_index,
+                    entity_col=kaggle_entity,
+                    value_col=kaggle_value
                 )
             progress.progress(10, text="Interpolating frames...")
 
