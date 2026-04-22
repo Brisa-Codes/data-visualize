@@ -1,6 +1,6 @@
 # ViralViz Engine
 
-Turn time-series data into cinematic bar chart race videos — optimized for YouTube, TikTok & Instagram Reels.
+Turn time-series data into cinematic bar chart race videos.
 
 ## Features
 
